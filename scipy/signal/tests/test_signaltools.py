@@ -108,7 +108,8 @@ class _TestConvolve(TestCase):
         x = np.random.rand(10)
         h = np.random.rand(5)
 
-        assert_allclose(convolve(x, h, method='direct'), convolve(x, h, method='fft'))
+        assert_allclose(convolve(x, h, method='direct'), 
+                        convolve(x, h, method='fft'))
 
 
 class TestConvolve(_TestConvolve):

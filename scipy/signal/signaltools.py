@@ -105,7 +105,7 @@ def _inputs_swap_needed(mode, shape1, shape2):
     return False
 
 
-def correlate(in1, in2, mode='full'):
+def correlate(in1, in2, mode='full', method='auto'):
     """
     Cross-correlate two N-dimensional arrays.
 
@@ -132,6 +132,19 @@ def correlate(in1, in2, mode='full'):
         ``same``
            The output is the same size as `in1`, centered
            with respect to the 'full' output.
+    method : str {'direct', 'auto', 'fft'}, optional
+        A string indicating what method used to perform the convolution.
+
+        ``direct``
+           The convolution is determined directly from sums, the definition of
+           convolution.
+        ``fft``
+           The Fourier Transform method is used to perform the correlation by
+           calling `fftconvolve(a, b[::-1])`.
+        ``auto``
+           A rough estimate to see which convolution method is faster (the
+           Fourier transform or direct method) and that method is chosen
+           (default).
 
     Returns
     -------
@@ -175,6 +188,21 @@ def correlate(in1, in2, mode='full'):
     """
     in1 = asarray(in1)
     in2 = asarray(in2)
+
+    if method == 'fft' and (in1.dtype.kind not in 'buif' or
+                            in2.dtype.kind not in 'buif'):
+        raise ValueError('convolve can only be called when method=="fft" when '
+                         'arrays consist of numeric elements (i.e., int/float'
+                         '/etc)')
+
+    # when using non-numeric arrays, use the direct method
+    if in1.dtype.kind not in 'buif' or in2.dtype.kind not in 'buif':
+        method = 'direct'
+
+    # this either calls fftconvonlve or this function with method=='direct'
+    if (method == 'fft' or method == 'auto'):
+        reveresed = [slice(None, None, -1)] * in1.ndim
+        return convolve(in1, in2[reveresed], mode, method)
 
     # Don't use _valfrommode, since correlate should not accept numeric modes
     try:
@@ -458,15 +486,16 @@ def convolve(in1, in2, mode='full', method='auto'):
     method : str {'direct', 'auto', 'fft'}, optional
         A string indicating what method used to perform the convolution.
 
+        ``auto``
+           A rough estimate to see which convolution method is faster (the
+           Fourier transform or direct method) and that method is chosen
+           (default).
         ``direct``
            The convolution is determined directly from sums, the definition of
-           convolution (default).
+           convolution.
         ``fft``
            The Fourier Transform method is used to perform the convolution by
            calling `fftconvolve`.
-        ``auto``
-           A rough estimate to see which convolution method is faster (the
-           Fourier transform or direct method) and that method is chosen.
 
     Returns
     -------
@@ -517,10 +546,12 @@ def convolve(in1, in2, mode='full', method='auto'):
     # convolution method is faster (discussed in scikit-image PR #1792)
     big_O_constant = 1 / 40.032 if kernel.ndim > 1 else 1 / 1.5
     direct_time = big_O_constant * np.prod(volume.shape + kernel.shape)
-    fft_time = np.sum([n*np.log(n) for n in volume.shape + kernel.shape])
+    fft_time = np.sum([n * np.log(n) for n in volume.shape + kernel.shape])
 
-    if (fft_time < direct_time and method == 'auto') or method == 'fft':
-        return fftconvolve(volume, kernel, mode=mode)
+    if ((fft_time < direct_time and method == 'auto') or method == 'fft') \
+            and volume.dtype.kind in 'buif' and kernel.dtype.kind in 'buif':
+        out = fftconvolve(volume, kernel, mode=mode)
+        return np.asarray(out, dtype=volume.dtype)
 
     # fastpath to faster numpy 1d convolve (but numpy's 'same' mode uses the
     # size of the larger input, not the first.)
@@ -532,7 +563,7 @@ def convolve(in1, in2, mode='full', method='auto'):
     reverse = [slice(None, None, -1)] * kernel.ndim
 
     # .conj() does nothing to real arrays and is faster than iscomplexobj()
-    return correlate(volume, kernel[reverse].conj(), mode)
+    return correlate(volume, kernel[reverse].conj(), mode, 'direct')
 
 
 def order_filter(a, domain, rank):
