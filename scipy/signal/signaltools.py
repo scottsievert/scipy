@@ -515,7 +515,7 @@ def convolve(in1, in2, mode='full', method='auto'):
 
     # see whether the fourier transform convolution method or the direct
     # convolution method is faster (discussed in scikit-image PR #1792)
-    big_O_constant = 1 / 40.032
+    big_O_constant = 1 / 40.032 if kernel.ndim > 1 else 1 / 1.5
     direct_time = big_O_constant * np.prod(volume.shape + kernel.shape)
     fft_time = np.sum([n*np.log(n) for n in volume.shape + kernel.shape])
 
