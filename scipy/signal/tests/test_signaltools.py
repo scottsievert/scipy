@@ -152,10 +152,10 @@ class TestConvolve(_TestConvolve):
         x = np.random.rand(100)
         h = np.random.rand(50)
 
-        assert_allclose(convolve(x, h, method='direct'), 
-                        convolve(x, h, method='fft'))
-
-
+        for mode in ['full', 'valid', 'same']:
+            assert_allclose(convolve(x, h, mode=mode, method='direct'),
+                            convolve(x, h, mode=mode, method='fft'))
+        assert_raises(ValueError, convolve, Decimal(3), Decimal(4), method='fft')
 
 
 class _TestConvolve2d(TestCase):
@@ -1097,12 +1097,14 @@ class _TestCorrelateReal(TestCase):
         return a, b, y_r
 
     def test_method(self):
-        np.random.seed(42)
-        x = np.random.randn(100)
-        y = np.random.rand(50)
+        a, b, y_r = self._setup_rank3()
+        y_fft = correlate(a, b, method='fft')
+        y_direct = correlate(a, b, method='direct')
 
-        assert_allclose(correlate(x, y, method='direct'),
-                        correlate(x, y, method='fft'))
+        assert_array_almost_equal(y_r, y_fft)
+        assert_array_almost_equal(y_r, y_direct)
+        assert_equal(y_fft.dtype, self.dt)
+        assert_equal(y_direct.dtype, self.dt)
 
     def test_rank1_valid(self):
         a, b, y_r = self._setup_rank1()

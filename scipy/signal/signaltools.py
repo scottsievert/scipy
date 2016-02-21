@@ -139,8 +139,8 @@ def correlate(in1, in2, mode='full', method='auto'):
            The convolution is determined directly from sums, the definition of
            convolution.
         ``fft``
-           The Fourier Transform method is used to perform the correlation by
-           calling `fftconvolve(a, b[::-1])`.
+           The Fourier Transform is used to perform the correlation and only
+           works for numerical arrays.
         ``auto``
            A rough estimate to see which convolution method is faster (the
            Fourier transform or direct method) and that method is chosen
@@ -189,20 +189,10 @@ def correlate(in1, in2, mode='full', method='auto'):
     in1 = asarray(in1)
     in2 = asarray(in2)
 
-    if method == 'fft' and (in1.dtype.kind not in 'buif' or
-                            in2.dtype.kind not in 'buif'):
-        raise ValueError('convolve can only be called when method=="fft" when '
-                         'arrays consist of numeric elements (i.e., int/float'
-                         '/etc)')
-
-    # when using non-numeric arrays, use the direct method
-    if in1.dtype.kind not in 'buif' or in2.dtype.kind not in 'buif':
-        method = 'direct'
-
-    # this either calls fftconvonlve or this function with method=='direct'
-    if (method == 'fft' or method == 'auto'):
-        reveresed = [slice(None, None, -1)] * in1.ndim
-        return convolve(in1, in2[reveresed], mode, method)
+    if in1.ndim == in2.ndim == 0:
+        return in1 * in2
+    elif not in1.ndim == in2.ndim:
+        raise ValueError("in1 and in2 should have the same dimensionality")
 
     # Don't use _valfrommode, since correlate should not accept numeric modes
     try:
@@ -211,10 +201,18 @@ def correlate(in1, in2, mode='full', method='auto'):
         raise ValueError("Acceptable mode flags are 'valid',"
                          " 'same', or 'full'.")
 
-    if in1.ndim == in2.ndim == 0:
-        return in1 * in2
-    elif not in1.ndim == in2.ndim:
-        raise ValueError("in1 and in2 should have the same dimensionality")
+    if (in1.dtype.kind not in 'buifc' or in2.dtype.kind not in 'buifc'):
+        if method == 'fft':
+            raise ValueError('convolve can only be called with method=="fft" '
+                             'when arrays consist of numeric elements (i.e., '
+                             'int/float/etc)')
+        else:
+            method = 'direct' # for non-numeric arrays
+
+    # this either calls fftconvolve or this function with method=='direct'
+    if method in ('fft', 'auto'):
+        reverse = [slice(None, None, -1)] * in1.ndim
+        return convolve(in1, in2[reverse].conj(), mode, method)
 
     # numpy is significantly faster for 1d (but numpy's 'same' mode uses
     # the size of the larger input, not the first.)
@@ -494,8 +492,8 @@ def convolve(in1, in2, mode='full', method='auto'):
            The convolution is determined directly from sums, the definition of
            convolution.
         ``fft``
-           The Fourier Transform method is used to perform the convolution by
-           calling `fftconvolve`.
+           The Fourier Transform is used to perform the convolution by calling
+           `fftconvolve`.
 
     Returns
     -------
