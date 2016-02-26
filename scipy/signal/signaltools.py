@@ -132,19 +132,19 @@ def correlate(in1, in2, mode='full', method='auto'):
         ``same``
            The output is the same size as `in1`, centered
            with respect to the 'full' output.
-    method : str {'direct', 'auto', 'fft'}, optional
-        A string indicating what method used to perform the convolution.
+    method : str {'auto', 'direct', 'fft'}, optional
+        A string indicating what method used to perform the correlation.
 
         ``direct``
-           The convolution is determined directly from sums, the definition of
-           convolution.
+           The correlation is determined directly from sums, the definition of
+           correlation.
         ``fft``
-           The Fourier Transform is used to perform the correlation and only
-           works for numerical arrays.
+           The Fast Fourier Transform is used to perform the correlation more
+           quickly (only available for numerical arrays.)
         ``auto``
-           A rough estimate to see which convolution method is faster (the
+           A rough estimate to see which correlation method is faster (the
            Fourier transform or direct method) and that method is chosen
-           (default).
+           (default). See notes for more detail.
 
     Returns
     -------
@@ -158,6 +158,10 @@ def correlate(in1, in2, mode='full', method='auto'):
 
       z[...,k,...] = sum[..., i_l, ...]
                          x[..., i_l,...] * conj(y[..., i_l + k,...])
+
+    ``method='fft'`` only works for numerical arrays as it relies on
+    `fftconvolve`. In certain cases (i.e., arrays of objects or when
+    rounding integers can lose precision), ``method='direct'`` is always used.
 
     Examples
     --------
@@ -209,7 +213,7 @@ def correlate(in1, in2, mode='full', method='auto'):
         else:
             method = 'direct'  # for non-numeric arrays
     elif ((in1.dtype.kind in 'ui' or in2.dtype.kind in 'ui') and 
-          max(in1.max(), in2.max()) * max(in1.size, in2.size) > 2**52 - 1):
+          in1.max() * in2.max() * max(in1.size, in2.size) > 2**52 - 1):
         # catch when more precision required than float provides (representing
         # a integer as float can lose precision if integer larger than 2**52)
         method = 'direct'
@@ -486,19 +490,25 @@ def convolve(in1, in2, mode='full', method='auto'):
         ``same``
            The output is the same size as `in1`, centered
            with respect to the 'full' output.
-    method : str {'direct', 'auto', 'fft'}, optional
+    method : str {'auto', 'direct', 'fft'}, optional
         A string indicating what method used to perform the convolution.
 
-        ``auto``
-           A rough estimate to see which convolution method is faster (the
-           Fourier transform or direct method) and that method is chosen
-           (default).
         ``direct``
            The convolution is determined directly from sums, the definition of
            convolution.
         ``fft``
            The Fourier Transform is used to perform the convolution by calling
            `fftconvolve`.
+        ``auto``
+           A rough estimate to see which convolution method is faster (the
+           Fourier transform or direct method) and that method is chosen
+           (default).
+
+    Notes
+    -----
+    ``method='fft'`` only works for numerical arrays as it relies on
+    scipy.signal.fftconvolve. In certain cases (i.e., arrays of objects or when
+    rounding integers can lose precision), ``method='direct'`` is always used.
 
     Returns
     -------
