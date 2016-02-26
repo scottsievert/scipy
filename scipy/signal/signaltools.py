@@ -207,7 +207,10 @@ def correlate(in1, in2, mode='full', method='auto'):
                              'when arrays consist of numeric elements (i.e., '
                              'int/float/etc)')
         else:
-            method = 'direct' # for non-numeric arrays
+            method = 'direct'  # for non-numeric arrays
+    elif ((in1.dtype.kind in 'ui' or in2.dtype.kind in 'ui') and 
+          np.abs(in1).sum() * np.abs(in2).sum() > 2**52 - 1):
+        method = 'direct'
 
     # this either calls fftconvolve or this function with method=='direct'
     if method in ('fft', 'auto'):

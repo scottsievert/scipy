@@ -1097,9 +1097,13 @@ class _TestCorrelateReal(TestCase):
         return a, b, y_r
 
     def test_method(self):
-        a, b, y_r = self._setup_rank3()
-        y_fft = correlate(a, b, method='fft')
-        y_direct = correlate(a, b, method='direct')
+        if self.dt == Decimal:
+            assert_raises(ValueError, correlate, 2*[Decimal(3)], 
+                          2*[Decimal(4)], method='fft')
+        else:
+            a, b, y_r = self._setup_rank3()
+            y_fft = correlate(a, b, method='fft')
+            y_direct = correlate(a, b, method='direct')
 
         assert_array_almost_equal(y_r, y_fft)
         assert_array_almost_equal(y_r, y_direct)
