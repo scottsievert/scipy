@@ -195,7 +195,7 @@ def correlate(in1, in2, mode='full', method='auto'):
 
     if in1.ndim == in2.ndim == 0:
         return in1 * in2
-    elif not in1.ndim == in2.ndim:
+    elif in1.ndim != in2.ndim:
         raise ValueError("in1 and in2 should have the same dimensionality")
 
     # Don't use _valfrommode, since correlate should not accept numeric modes
@@ -212,7 +212,7 @@ def correlate(in1, in2, mode='full', method='auto'):
                              'int/float/etc)')
         else:
             method = 'direct'  # for non-numeric arrays
-    elif ((in1.dtype.kind in 'ui' or in2.dtype.kind in 'ui') and 
+    elif ((in1.dtype.kind in 'ui' or in2.dtype.kind in 'ui') and
           in1.max() * in2.max() * max(in1.size, in2.size) > 2**52 - 1):
         # catch when more precision required than float provides (representing
         # a integer as float can lose precision if integer larger than 2**52)
@@ -555,11 +555,18 @@ def convolve(in1, in2, mode='full', method='auto'):
         # Convolution is commutative; order doesn't have any effect on output
         volume, kernel = kernel, volume
 
+    out_shape = {'full':[n + k for n, k in zip(volume.shape, kernel.shape)],
+                 'same':volume.shape,
+                 'valid':[n - k + 1 for n, k in zip(volume.shape,
+                                                    kernel.shape)]}
+
     # see whether the fourier transform convolution method or the direct
     # convolution method is faster (discussed in scikit-image PR #1792)
-    big_O_constant = 1 / 40.032 if kernel.ndim > 1 else 1 / 1.5
-    direct_time = big_O_constant * np.prod(volume.shape + kernel.shape)
-    fft_time = np.sum([n * np.log(n) for n in volume.shape + kernel.shape])
+    big_O_constant = 5e-6 if volume.ndim > 1 else 4.81e-4
+    direct_time = big_O_constant * np.prod(volume.shape + kernel.shape +
+                                           tuple(out_shape[mode]))
+    fft_time = np.sum([n * np.log(n) for n in (volume.shape + kernel.shape +
+                                               tuple(out_shape[mode]))])
 
     if ((fft_time < direct_time and method == 'auto') or method == 'fft') \
             and volume.dtype.kind in 'buif' and kernel.dtype.kind in 'buif':
