@@ -213,7 +213,7 @@ def correlate(in1, in2, mode='full', method='auto'):
         else:
             method = 'direct'  # for non-numeric arrays
     elif ((in1.dtype.kind in 'ui' or in2.dtype.kind in 'ui') and
-          in1.max() * in2.max() * max(in1.size, in2.size) > 2**52 - 1):
+          in1.max() * in2.max() * min(in1.size, in2.size) > 2**52 - 1):
         # catch when more precision required than float provides (representing
         # a integer as float can lose precision if integer larger than 2**52)
         method = 'direct'
@@ -504,12 +504,6 @@ def convolve(in1, in2, mode='full', method='auto'):
            Fourier transform or direct method) and that method is chosen
            (default).
 
-    Notes
-    -----
-    ``method='fft'`` only works for numerical arrays as it relies on
-    scipy.signal.fftconvolve. In certain cases (i.e., arrays of objects or when
-    rounding integers can lose precision), ``method='direct'`` is always used.
-
     Returns
     -------
     convolve : array
@@ -520,6 +514,12 @@ def convolve(in1, in2, mode='full', method='auto'):
     --------
     numpy.polymul : performs polynomial multiplication (same operation, but
                     also accepts poly1d objects)
+
+    Notes
+    -----
+    ``method='fft'`` only works for numerical arrays as it relies on
+    scipy.signal.fftconvolve. In certain cases (i.e., arrays of objects or when
+    rounding integers can lose precision), ``method='direct'`` is always used.
 
     Examples
     --------
@@ -563,8 +563,8 @@ def convolve(in1, in2, mode='full', method='auto'):
     # see whether the fourier transform convolution method or the direct
     # convolution method is faster (discussed in scikit-image PR #1792)
     big_O_constant = 5e-6 if volume.ndim > 1 else 4.81e-4
-    direct_time = big_O_constant * np.prod(volume.shape + kernel.shape +
-                                           tuple(out_shape[mode]))
+    direct_time = big_O_constant * (volume.size * kernel.size *
+                                    np.prod(out_shape[mode]))
     fft_time = np.sum([n * np.log(n) for n in (volume.shape + kernel.shape +
                                                tuple(out_shape[mode]))])
 
