@@ -205,19 +205,6 @@ def correlate(in1, in2, mode='full', method='auto'):
         raise ValueError("Acceptable mode flags are 'valid',"
                          " 'same', or 'full'.")
 
-    if (in1.dtype.kind not in 'buifc' or in2.dtype.kind not in 'buifc'):
-        if method == 'fft':
-            raise ValueError('convolve can only be called with method=="fft" '
-                             'when arrays consist of numeric elements (i.e., '
-                             'int/float/etc)')
-        else:
-            method = 'direct'  # for non-numeric arrays
-    elif ((in1.dtype.kind in 'ui' or in2.dtype.kind in 'ui') and
-          in1.max() * in2.max() * min(in1.size, in2.size) > 2**52 - 1):
-        # catch when more precision required than float provides (representing
-        # a integer as float can lose precision if integer larger than 2**52)
-        method = 'direct'
-
     # this either calls fftconvolve or this function with method=='direct'
     if method in ('fft', 'auto'):
         reverse = [slice(None, None, -1)] * in1.ndim
@@ -555,10 +542,25 @@ def convolve(in1, in2, mode='full', method='auto'):
         # Convolution is commutative; order doesn't have any effect on output
         volume, kernel = kernel, volume
 
-    out_shape = {'full':[n + k for n, k in zip(volume.shape, kernel.shape)],
-                 'same':volume.shape,
-                 'valid':[n - k + 1 for n, k in zip(volume.shape,
-                                                    kernel.shape)]}
+    out_shape = {'full': [n + k - 1 for n, k in zip(volume.shape,
+                                                    kernel.shape)],
+                 'same': volume.shape,
+                 'valid': [n - k + 1 for n, k in zip(volume.shape,
+                                                     kernel.shape)]}
+
+    if (volume.dtype.kind not in 'buifc' or kernel.dtype.kind not in 'buifc'):
+        if method == 'fft':
+            raise ValueError('convolve can only be called with method=="fft" '
+                             'when arrays consist of numeric elements (i.e., '
+                             'int/float/etc)')
+        else:
+            method = 'direct'  # for non-numeric arrays
+    elif ((volume.dtype.kind in 'ui' or kernel.dtype.kind in 'ui') and
+            int(volume.max()) * int(kernel.max()) *
+            min(volume.size, kernel.size) > 2**52 - 1):
+        # catch when more precision required than float provides (representing
+        # a integer as float can lose precision if integer larger than 2**52)
+        method = 'direct'
 
     # see whether the fourier transform convolution method or the direct
     # convolution method is faster (discussed in scikit-image PR #1792)
