@@ -571,6 +571,7 @@ def convolve(in1, in2, mode='full', method='auto'):
     if ((fft_time < direct_time and method == 'auto') or method == 'fft') \
             and volume.dtype.kind in 'buif' and kernel.dtype.kind in 'buif':
         out = fftconvolve(volume, kernel, mode=mode)
+        out = np.around(out) if volume.dtype.kind in 'ui' else out
         return np.asarray(out, dtype=volume.dtype)
 
     # fastpath to faster numpy 1d convolve (but numpy's 'same' mode uses the

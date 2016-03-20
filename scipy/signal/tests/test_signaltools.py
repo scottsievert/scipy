@@ -155,7 +155,8 @@ class TestConvolve(_TestConvolve):
         for mode in ['full', 'valid', 'same']:
             assert_allclose(convolve(x, h, mode=mode, method='direct'),
                             convolve(x, h, mode=mode, method='fft'))
-        assert_raises(ValueError, convolve, Decimal(3), Decimal(4), method='fft')
+        assert_raises(ValueError, convolve, 2 * [Decimal(3)], 2 * [Decimal(4)],
+                      method='fft')
 
 
 class _TestConvolve2d(TestCase):
@@ -1105,10 +1106,10 @@ class _TestCorrelateReal(TestCase):
             y_fft = correlate(a, b, method='fft')
             y_direct = correlate(a, b, method='direct')
 
-        assert_array_almost_equal(y_r, y_fft)
-        assert_array_almost_equal(y_r, y_direct)
-        assert_equal(y_fft.dtype, self.dt)
-        assert_equal(y_direct.dtype, self.dt)
+            assert_array_almost_equal(y_r, y_fft)
+            assert_array_almost_equal(y_r, y_direct)
+            assert_equal(y_fft.dtype, self.dt)
+            assert_equal(y_direct.dtype, self.dt)
 
     def test_rank1_valid(self):
         a, b, y_r = self._setup_rank1()
