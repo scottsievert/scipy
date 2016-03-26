@@ -146,6 +146,8 @@ def correlate(in1, in2, mode='full', method='auto'):
            Fourier transform or direct method) and that method is chosen
            (default). See notes for more detail.
 
+           .. versionadded:: 0.18.0
+
     Returns
     -------
     correlate : array
@@ -325,6 +327,9 @@ def fftconvolve(in1, in2, mode="full"):
     but can be slower when only a few output values are needed, and can only
     output float arrays (int or object array inputs will be cast to float).
 
+    However, `convolve` performs a rough calculation to see if this method or
+    the direct method is faster (as of v0.18).
+
     Parameters
     ----------
     in1 : array_like
@@ -491,6 +496,8 @@ def convolve(in1, in2, mode='full', method='auto'):
            Fourier transform or direct method) and that method is chosen
            (default).
 
+           .. versionadded:: 0.18.0
+
     Returns
     -------
     convolve : array
@@ -505,7 +512,7 @@ def convolve(in1, in2, mode='full', method='auto'):
     Notes
     -----
     ``method='fft'`` only works for numerical arrays as it relies on
-    scipy.signal.fftconvolve. In certain cases (i.e., arrays of objects or when
+    `fftconvolve`. In certain cases (i.e., arrays of objects or when
     rounding integers can lose precision), ``method='direct'`` is always used.
 
     Examples
