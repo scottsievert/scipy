@@ -563,7 +563,7 @@ def convolve(in1, in2, mode='full', method='auto'):
         else:
             method = 'direct'  # for non-numeric arrays
     elif ((volume.dtype.kind in 'ui' or kernel.dtype.kind in 'ui') and
-            int(volume.max()) * int(kernel.max()) *
+            int(np.abs(volume).max()) * int(np.abs(kernel).max()) *
             min(volume.size, kernel.size) > 2**52 - 1):
         # catch when more precision required than float provides (representing
         # a integer as float can lose precision if integer larger than 2**52)
@@ -578,7 +578,8 @@ def convolve(in1, in2, mode='full', method='auto'):
                                                tuple(out_shape[mode]))])
 
     if ((fft_time < direct_time and method == 'auto') or method == 'fft') \
-            and volume.dtype.kind in 'buifc' and kernel.dtype.kind in 'buifc':
+            and volume.dtype.kind in 'buifc' and kernel.dtype.kind in 'buifc' \
+            and volume.dtype != 'complex256' and kernel.dtype != 'complex256':
         out = fftconvolve(volume, kernel, mode=mode)
         out = np.around(out) if volume.dtype.kind in 'ui' else out
         return np.asarray(out, dtype=volume.dtype)
