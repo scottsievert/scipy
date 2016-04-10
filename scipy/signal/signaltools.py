@@ -482,7 +482,7 @@ def _numeric_arrays(arrays, kinds='buifc'):
             return False
     return True
 
-def _fftconv_faster(volume, kernel, mode):
+def _fftconv_faster(x, h, mode):
     """
     See if using fftconvolve or convolve is faster. The value returned (a 
     boolean) depends on the sizes and shapes of the input values.
@@ -492,18 +492,24 @@ def _fftconv_faster(volume, kernel, mode):
     is found in both big O constants). Regardless, this had been tuned on an
     early 2015 MacBook Pro with 8GB RAM and an Intel i5 processor. 
     """
-    out_shape = {'full': [n + k - 1 for n, k in zip(volume.shape,
-                                                    kernel.shape)],
-                 'same': volume.shape,
-                 'valid': [n - k + 1 for n, k in zip(volume.shape,
-                                                     kernel.shape)]}
+    out_shape = {'full': [n + k - 1 for n, k in zip(x.shape, h.shape)],
+                 'same': x.shape,
+                 'valid': [n - k + 1 for n, k in zip(x.shape, h.shape)]}
+
     # see whether the fourier transform convolution method or the direct
     # convolution method is faster (discussed in scikit-image PR #1792)
-    big_O_constant = 5e-6 if volume.ndim > 1 else 4.81e-4
-    direct_time = big_O_constant * (volume.size * kernel.size *
-                                    np.prod(out_shape[mode]))
-    fft_time = np.sum([n * np.log(n) for n in (volume.shape + kernel.shape +
+    big_O_constant = 5e-6 if x.ndim > 1 else 4.81e-4
+    direct_time = big_O_constant * (x.size * h.size * np.prod(out_shape[mode]))
+    fft_time = np.sum([n * np.log(n) for n in (x.shape + h.shape +
                                                tuple(out_shape[mode]))])
+    if mode == 'valid':
+        shape_diff = np.prod([n - k for n, k in zip(x.shape, h.shape)])
+        # this decision was calculated with a single dimension
+        shape_diff = np.power(np.abs(shape_diff), 1 / x.ndim)
+        if (x.ndim == 1 and shape_diff < 300) or \
+           (x.ndim < 6 and shape_diff <= 2) or (shape_diff == 0):
+            return False
+
     return fft_time < direct_time
 
 def _reverse_and_conj(x):
