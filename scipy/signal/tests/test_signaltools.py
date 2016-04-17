@@ -149,15 +149,36 @@ class TestConvolve(_TestConvolve):
 
     def test_convolve_method(self):
         np.random.seed(42)
-        x = np.random.rand(100)
-        h = np.random.rand(50)
-
         for mode in ['full', 'valid', 'same']:
-            assert_allclose(convolve(x, h, mode=mode, method='direct'),
-                            convolve(x, h, mode=mode, method='fft'))
+            for _, dtype_list in np.sctypes.items():
+                for dtype in dtype_list:
+                    if dtype == np.void:
+                        continue
+                    x = np.random.rand(100).astype(dtype)
+                    h = np.random.rand(50).astype(dtype)
+
+                    if x.dtype.kind not in 'buifc':
+                        assert_raises(ValueError, convolve, x, h, method='fft')
+                        continue
+
+                    results = {'direct':convolve(x, h, mode=mode, 
+                                                 method='direct'),
+                               'fft':convolve(x, h, mode=mode, method='fft')}
+
+                    rtol = {'rtol': 2e-5} if dtype in {np.complex64,
+                                                       np.float32} else {}
+                    assert_allclose(results['direct'], results['fft'], **rtol)
+                    assert_equal(results['direct'].dtype, results['fft'].dtype)
+
+        # tests for edge-case bugs. Convolving two really 
+        for n in [10, 20, 50, 51, 52, 80, 100]:
+            assert_equal(convolve([1], [2**n]), 2**n)
+            assert_equal(convolve([1], [2**n], method='auto'), 2**n)
+
+        assert_equal(convolve([4], [5], 'valid', 'fft'), 20)
+                                    
         assert_raises(ValueError, convolve, 2 * [Decimal(3)], 2 * [Decimal(4)],
                       method='fft')
-
 
 class _TestConvolve2d(TestCase):
 
