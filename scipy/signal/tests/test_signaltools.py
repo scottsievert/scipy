@@ -165,9 +165,9 @@ class TestConvolve(_TestConvolve):
                                                  method='direct'),
                                'fft':convolve(x, h, mode=mode, method='fft')}
 
-                    rtol = {'rtol': 2e-5} if dtype in {np.complex64,
+                    rtol = {'rtol': 5.5e-5} if dtype in {np.complex64,
                                                        np.float32} else {}
-                    assert_allclose(results['direct'], results['fft'], **rtol)
+                    assert_allclose(results['fft'], results['direct'], **rtol)
                     assert_equal(results['direct'].dtype, results['fft'].dtype)
 
         # tests for edge-case bugs. Convolving two really 
