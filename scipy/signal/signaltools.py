@@ -636,7 +636,7 @@ def convolve(in1, in2, mode='full', method='auto'):
 
     # catch when more precision required than float provides (representing a
     # integer as float can lose precision in fftconvolve if larger than 2**52)
-    if method == 'fft' and any([_numeric_arrays([x], kinds='ui') 
+    if method == 'fft' and any([_numeric_arrays([x], kinds='ui')
                                         for x in [volume, kernel]]):
         max_value = int(np.abs(volume).max()) * int(np.abs(kernel).max())
         max_value *= int(min(volume.size, kernel.size))

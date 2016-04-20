@@ -148,35 +148,49 @@ class TestConvolve(_TestConvolve):
         self.assertRaises(ValueError, convolve, *(b, a), **{'mode': 'valid'})
 
     def test_convolve_method(self):
-        np.random.seed(42)
         for mode in ['full', 'valid', 'same']:
             for _, dtype_list in np.sctypes.items():
+                np.random.seed(42)
                 for dtype in dtype_list:
-                    if dtype == np.void:
+                    if dtype == np.void or dtype == str:
                         continue
-                    x = np.random.rand(100).astype(dtype)
-                    h = np.random.rand(50).astype(dtype)
+                    x = (0.5 + np.random.rand(100)).astype(dtype)
+                    h = (0.5 + np.random.rand(50)).astype(dtype)
 
                     if x.dtype.kind not in 'buifc':
                         assert_raises(ValueError, convolve, x, h, method='fft')
                         continue
 
-                    results = {'direct':convolve(x, h, mode=mode, 
+                    if x.dtype.kind != 'b':
+                        x += 1
+                        h += 1
+
+                    if x.dtype.kind == 'c':
+                        x += 1j * np.random.rand(*x.shape).astype(dtype)
+                        h += 1j * np.random.rand(*h.shape).astype(dtype)
+
+                    results = {'direct':convolve(x, h, mode=mode,
                                                  method='direct'),
                                'fft':convolve(x, h, mode=mode, method='fft')}
 
-                    rtol = {'rtol': 5.5e-5} if dtype in {np.complex64,
-                                                       np.float32} else {}
+                    rtol = {'rtol': 2.0e-5} if dtype in {np.complex64,
+                                                         np.float32} else {}
                     assert_allclose(results['fft'], results['direct'], **rtol)
                     assert_equal(results['direct'].dtype, results['fft'].dtype)
 
-        # tests for edge-case bugs. Convolving two really 
-        for n in [10, 20, 50, 51, 52, 80, 100]:
-            assert_equal(convolve([1], [2**n]), 2**n)
-            assert_equal(convolve([1], [2**n], method='auto'), 2**n)
+        # This is really a test that convolving two large integers goes to the
+        # direct method even if they're in the fft method.
+        for n in [10, 20, 50, 51, 52, 53, 54, 60, 63]:
+            fft = convolve([2**n], [2**n], method='fft')
+            direct = convolve([2**n], [2**n], method='direct')
+            assert_equal(fft, direct)
+
+            # this is the case when integer precision gets to us
+            if n < 50:
+                assert_equal(fft, 2**(2*n))
+                assert_equal(direct, 2**(2*n))
 
         assert_equal(convolve([4], [5], 'valid', 'fft'), 20)
-                                    
         assert_raises(ValueError, convolve, 2 * [Decimal(3)], 2 * [Decimal(4)],
                       method='fft')
 
