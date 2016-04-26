@@ -496,19 +496,19 @@ def _prod(iterable):
 
 def _fftconv_faster(x, h, mode):
     """
-    See if using fftconvolve or convolve is faster. The value returned (a 
+    See if using fftconvolve or convolve is faster. The value returned (a
     boolean) depends on the sizes and shapes of the input values.
 
     The big O ratios were found to hold to different machines, which makes
     sense as it's the ratio that matters (the effective speed of the computer
     is found in both big O constants). Regardless, this had been tuned on an
-    early 2015 MacBook Pro with 8GB RAM and an Intel i5 processor. 
+    early 2015 MacBook Pro with 8GB RAM and an Intel i5 processor.
     """
     out_shape = {'full': [n + k - 1 for n, k in zip(x.shape, h.shape)],
                  'same': x.shape,
                  'valid': [n - k + 1 for n, k in zip(x.shape, h.shape)]}
 
-    # see whether the fourier transform convolution method or the direct
+    # see whether the Fourier transform convolution method or the direct
     # convolution method is faster (discussed in scikit-image PR #1792)
     big_O_constant = 5e-6 if x.ndim > 1 else 4.81e-4
     direct_time = big_O_constant * (x.size * h.size * _prod(out_shape[mode]))
@@ -524,6 +524,7 @@ def _fftconv_faster(x, h, mode):
 
     return fft_time < direct_time
 
+
 def _reverse_and_conj(x):
     """
     Reverse array `x` in all dimensions and perform the complex conjugate
@@ -531,13 +532,16 @@ def _reverse_and_conj(x):
     reverse = [slice(None, None, -1)] * x.ndim
     return x[reverse].conj()
 
+
 def _np_conv_ok(volume, kernel, mode):
     """
     See if numpy support convolution of x and y (if both 1D ndarrays and of the
     appropriate shape).
+    (numpy's 'same' mode uses the size of the larger input, not the first.)
     """
-    np_conv_ok = volume.ndim == kernel.ndim == 1 
+    np_conv_ok = volume.ndim == kernel.ndim == 1
     return np_conv_ok and (volume.size >= kernel.size or mode != 'same')
+
 
 def convolve(in1, in2, mode='full', method='auto'):
     """
@@ -634,8 +638,8 @@ def convolve(in1, in2, mode='full', method='auto'):
         volume, kernel = kernel, volume
 
     if method == 'fft' and not _numeric_arrays([volume, kernel]):
-        raise ValueError('convolve can only be called with method=="fft" when'
-                         ' arrays consist of numeric elements (i.e., '
+        raise ValueError('convolve can only be called with method=="fft" when '
+                         'arrays consist of numeric elements (i.e., '
                          'int/float/etc)')
 
     if method == 'auto':
@@ -660,8 +664,6 @@ def convolve(in1, in2, mode='full', method='auto'):
         out = np.around(out) if volume.dtype.kind in 'ui' else out
         return np.asarray(out, dtype=volume.dtype)
 
-    # fastpath to faster numpy 1d convolve (but numpy's 'same' mode uses the
-    # size of the larger input, not the first.)
     if _np_conv_ok(volume, kernel, mode):
         return np.convolve(volume, kernel, mode)
 
