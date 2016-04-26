@@ -642,11 +642,6 @@ def convolve(in1, in2, mode='full', method='auto'):
         # Convolution is commutative; order doesn't have any effect on output
         volume, kernel = kernel, volume
 
-    if method == 'fft' and not _numeric_arrays([volume, kernel]):
-        raise ValueError('convolve can only be called with method=="fft" when '
-                         'arrays consist of numeric elements (i.e., '
-                         'int/float/etc)')
-
     if method == 'auto':
         if _fftconv_faster(volume, kernel, mode):
             if _numeric_arrays([volume, kernel]):
