@@ -648,25 +648,29 @@ def convolve(in1, in2, mode='full', method='auto'):
                          'int/float/etc)')
 
     if method == 'auto':
-        method = 'fft' if _fftconv_faster(volume, kernel, mode) else 'direct'
-        method = 'direct' if not _numeric_arrays([volume, kernel]) else method
+        if _fftconv_faster(volume, kernel, mode):
+            if _numeric_arrays([volume, kernel]):
+                method = 'fft'
+        else:
+            method = 'direct'
 
-    if method in ('fft', 'auto') and hasattr(np, "complex256"):
-        method = 'direct' if volume.dtype == 'complex256' else method
-        method = 'direct' if kernel.dtype == 'complex256' else method
+    if method == 'fft' and hasattr(np, "complex256"):
+        if volume.dtype == 'complex256' or kernel.dtype == 'complex256':
+            method = 'direct'
 
     # catch when more precision required than float provides (representing a
     # integer as float can lose precision in fftconvolve if larger than 2**52)
     if method == 'fft' and any([_numeric_arrays([x], kinds='ui')
-                                        for x in [volume, kernel]]):
+                                for x in [volume, kernel]]):
         max_value = int(np.abs(volume).max()) * int(np.abs(kernel).max())
         max_value *= int(min(volume.size, kernel.size))
-        method = 'direct' if max_value > 2**np.finfo('float').nmant - 1 \
-                                                                    else method
+        if max_value > 2**np.finfo('float').nmant - 1:
+            method = 'direct'
 
     if method == 'fft':
         out = fftconvolve(volume, kernel, mode=mode)
-        out = np.around(out) if volume.dtype.kind in 'ui' else out
+        if volume.dtype.kind in 'ui':
+            out = np.around(out)
         return np.asarray(out, dtype=volume.dtype)
 
     if _np_conv_ok(volume, kernel, mode):
