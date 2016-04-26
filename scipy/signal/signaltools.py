@@ -504,16 +504,21 @@ def _fftconv_faster(x, h, mode):
     is found in both big O constants). Regardless, this had been tuned on an
     early 2015 MacBook Pro with 8GB RAM and an Intel i5 processor.
     """
-    out_shape = {'full': [n + k - 1 for n, k in zip(x.shape, h.shape)],
-                 'same': x.shape,
-                 'valid': [n - k + 1 for n, k in zip(x.shape, h.shape)]}
+    if mode == 'full':
+        out_shape = [n + k - 1 for n, k in zip(x.shape, h.shape)]
+    elif mode == 'same':
+        out_shape = x.shape
+    elif mode == 'valid':
+        out_shape = [n - k + 1 for n, k in zip(x.shape, h.shape)]
+    else:
+        raise ValueError('mode is invalid')
 
     # see whether the Fourier transform convolution method or the direct
     # convolution method is faster (discussed in scikit-image PR #1792)
     big_O_constant = 5e-6 if x.ndim > 1 else 4.81e-4
-    direct_time = big_O_constant * (x.size * h.size * _prod(out_shape[mode]))
+    direct_time = big_O_constant * (x.size * h.size * _prod(out_shape))
     fft_time = np.sum([n * np.log(n) for n in (x.shape + h.shape +
-                                               tuple(out_shape[mode]))])
+                                               tuple(out_shape))])
     if mode == 'valid':
         shape_diff = _prod([n - k for n, k in zip(x.shape, h.shape)])
         # this decision was calculated with a single dimension
