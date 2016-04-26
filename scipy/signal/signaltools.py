@@ -482,6 +482,18 @@ def _numeric_arrays(arrays, kinds='buifc'):
             return False
     return True
 
+
+def _prod(iterable):
+    """
+    Product of a list of numbers.
+    Faster than np.prod for short lists like array shapes.
+    """
+    product = 1
+    for x in iterable:
+        product *= x
+    return product
+
+
 def _fftconv_faster(x, h, mode):
     """
     See if using fftconvolve or convolve is faster. The value returned (a 
@@ -499,11 +511,11 @@ def _fftconv_faster(x, h, mode):
     # see whether the fourier transform convolution method or the direct
     # convolution method is faster (discussed in scikit-image PR #1792)
     big_O_constant = 5e-6 if x.ndim > 1 else 4.81e-4
-    direct_time = big_O_constant * (x.size * h.size * np.prod(out_shape[mode]))
+    direct_time = big_O_constant * (x.size * h.size * _prod(out_shape[mode]))
     fft_time = np.sum([n * np.log(n) for n in (x.shape + h.shape +
                                                tuple(out_shape[mode]))])
     if mode == 'valid':
-        shape_diff = np.prod([n - k for n, k in zip(x.shape, h.shape)])
+        shape_diff = _prod([n - k for n, k in zip(x.shape, h.shape)])
         # this decision was calculated with a single dimension
         shape_diff = np.power(np.abs(shape_diff), 1 / x.ndim)
         if (x.ndim == 1 and shape_diff < 300) or \
@@ -2269,7 +2281,7 @@ def detrend(data, axis=-1, type='linear', bp=0):
             axis = axis + rnk
         newdims = r_[axis, 0:axis, axis + 1:rnk]
         newdata = reshape(transpose(data, tuple(newdims)),
-                          (N, prod(dshape, axis=0) // N))
+                          (N, _prod(dshape) // N))
         newdata = newdata.copy()  # make sure we have a copy
         if newdata.dtype.char not in 'dfDF':
             newdata = newdata.astype(dtype)
