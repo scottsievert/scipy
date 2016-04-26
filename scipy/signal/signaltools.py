@@ -548,6 +548,28 @@ def _np_conv_ok(volume, kernel, mode):
     return np_conv_ok and (volume.size >= kernel.size or mode != 'same')
 
 
+def _choose_fft_or_direct(volume, kernel, mode):
+    # fftconvolve doesn't support complex256
+    if hasattr(np, "complex256"):
+        if volume.dtype == 'complex256' or kernel.dtype == 'complex256':
+            return 'direct'
+
+    # for integer input,
+    # catch when more precision required than float provides (representing a
+    # integer as float can lose precision in fftconvolve if larger than 2**52)
+    if any([_numeric_arrays([x], kinds='ui') for x in [volume, kernel]]):
+        max_value = int(np.abs(volume).max()) * int(np.abs(kernel).max())
+        max_value *= int(min(volume.size, kernel.size))
+        if max_value > 2**np.finfo('float').nmant - 1:
+            return 'direct'
+
+    if _numeric_arrays([volume, kernel]):
+        if _fftconv_faster(volume, kernel, mode):
+            return 'fft'
+    else:
+        return 'direct'
+
+
 def convolve(in1, in2, mode='full', method='auto'):
     """
     Convolve two N-dimensional arrays.
@@ -643,24 +665,7 @@ def convolve(in1, in2, mode='full', method='auto'):
         volume, kernel = kernel, volume
 
     if method == 'auto':
-        if _fftconv_faster(volume, kernel, mode):
-            if _numeric_arrays([volume, kernel]):
-                method = 'fft'
-        else:
-            method = 'direct'
-
-    if method == 'fft' and hasattr(np, "complex256"):
-        if volume.dtype == 'complex256' or kernel.dtype == 'complex256':
-            method = 'direct'
-
-    # catch when more precision required than float provides (representing a
-    # integer as float can lose precision in fftconvolve if larger than 2**52)
-    if method == 'fft' and any([_numeric_arrays([x], kinds='ui')
-                                for x in [volume, kernel]]):
-        max_value = int(np.abs(volume).max()) * int(np.abs(kernel).max())
-        max_value *= int(min(volume.size, kernel.size))
-        if max_value > 2**np.finfo('float').nmant - 1:
-            method = 'direct'
+        method = _choose_fft_or_direct(volume, kernel, mode)
 
     if method == 'fft':
         out = fftconvolve(volume, kernel, mode=mode)
