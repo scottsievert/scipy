@@ -671,7 +671,9 @@ def convolve(in1, in2, mode='full', method='auto'):
         out = fftconvolve(volume, kernel, mode=mode)
         if volume.dtype.kind in 'ui':
             out = np.around(out)
-        return np.asarray(out, dtype=volume.dtype)
+            return np.asarray(out, dtype=volume.dtype)
+        else:
+            return out
 
     if _np_conv_ok(volume, kernel, mode):
         return np.convolve(volume, kernel, mode)
