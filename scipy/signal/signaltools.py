@@ -540,9 +540,9 @@ def _reverse_and_conj(x):
 
 def _np_conv_ok(volume, kernel, mode):
     """
-    See if numpy support convolution of x and y (if both 1D ndarrays and of the
-    appropriate shape).
-    (numpy's 'same' mode uses the size of the larger input, not the first.)
+    See if numpy supports convolution of x and y (if both are 1D ndarrays and
+    of the appropriate shape).  Numpy's 'same' mode uses the size of the
+    larger input, not the first.
     """
     np_conv_ok = volume.ndim == kernel.ndim == 1
     return np_conv_ok and (volume.size >= kernel.size or mode != 'same')
@@ -675,6 +675,7 @@ def convolve(in1, in2, mode='full', method='auto'):
         else:
             return out
 
+    # fastpath to faster numpy convolve for 1d inputs
     if _np_conv_ok(volume, kernel, mode):
         return np.convolve(volume, kernel, mode)
 
