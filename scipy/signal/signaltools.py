@@ -468,11 +468,11 @@ def _numeric_arrays(arrays, kinds='buifc'):
     Examples
     --------
 
-    >>> x = np.ndarray([1, 2, 3])
+    >>> x = np.array([1, 2, 3])
     >>> y = x.copy()
-    >>> assert _numeric_array(x, y)
-    >>> obj = np.ndarray(['this', 'is', 'not', 'numeric'])
-    >>> assert not _numeric_array(obj)
+    >>> assert _numeric_arrays((x, y))
+    >>> obj = np.array(['this', 'is', 'not', 'numeric'])
+    >>> assert not _numeric_arrays(obj)
 
     """
     if type(arrays) == ndarray:
