@@ -663,6 +663,10 @@ def convolve(in1, in2, mode='full', method='auto'):
         # Convolution is commutative; order doesn't have any effect on output
         volume, kernel = kernel, volume
 
+    if method == 'fft' and volume.dtype.kind not in 'buifc' \
+                       and kernel.dtype.kind not in 'buifc':
+        raise ValueError("fftconvolve only supports numeric dtypes")
+
     if method == 'auto':
         method = _choose_conv_method(volume, kernel, mode)
 
@@ -670,9 +674,7 @@ def convolve(in1, in2, mode='full', method='auto'):
         out = fftconvolve(volume, kernel, mode=mode)
         if volume.dtype.kind in 'ui':
             out = np.around(out)
-            return np.asarray(out, dtype=volume.dtype)
-        else:
-            return out
+        return out.astype(volume.dtype)
 
     # fastpath to faster numpy convolve for 1d inputs
     if _np_conv_ok(volume, kernel, mode):
