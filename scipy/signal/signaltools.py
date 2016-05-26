@@ -548,7 +548,7 @@ def _np_conv_ok(volume, kernel, mode):
     return np_conv_ok and (volume.size >= kernel.size or mode != 'same')
 
 
-def _choose_fft_or_direct(volume, kernel, mode):
+def _choose_conv_method(volume, kernel, mode):
     # fftconvolve doesn't support complex256
     if hasattr(np, "complex256"):
         if volume.dtype == 'complex256' or kernel.dtype == 'complex256':
@@ -563,11 +563,10 @@ def _choose_fft_or_direct(volume, kernel, mode):
         if max_value > 2**np.finfo('float').nmant - 1:
             return 'direct'
 
-    if _numeric_arrays([volume, kernel]):
-        if _fftconv_faster(volume, kernel, mode):
-            return 'fft'
-    else:
-        return 'direct'
+    if _numeric_arrays([volume, kernel]) and _fftconv_faster(volume,
+                                                             kernel, mode):
+        return 'fft'
+    return 'direct'
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -665,7 +664,7 @@ def convolve(in1, in2, mode='full', method='auto'):
         volume, kernel = kernel, volume
 
     if method == 'auto':
-        method = _choose_fft_or_direct(volume, kernel, mode)
+        method = _choose_conv_method(volume, kernel, mode)
 
     if method == 'fft':
         out = fftconvolve(volume, kernel, mode=mode)
