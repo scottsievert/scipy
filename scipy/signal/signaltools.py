@@ -30,6 +30,7 @@ if sys.version_info.major >= 3 and sys.version_info.minor >= 5:
     from math import gcd
 else:
     from fractions import gcd
+import math
 
 
 __all__ = ['correlate', 'fftconvolve', 'convolve', 'convolve2d', 'correlate2d',
@@ -505,11 +506,40 @@ def _fftconv_faster(x, h, mode):
     early 2015 MacBook Pro with 8GB RAM and an Intel i5 processor.
     """
     if mode == 'full':
+        small_dims = set([min(h.shape), min(x.shape)])
+        large_dims = set([max(h.shape), max(x.shape)])
+        if h.ndim == x.ndim == 2 \
+        and (min(h.shape) < 50 or min(x.shape) < 50)\
+        and max(large_dims) > 40:
+            # (40, 2*n), (2, n)
+            return True
+        if h.size <= 90 or x.size <= 90:  # orange lines
+            return False
+        if x.size*h.size < 600**2:  # green line
+            return False
         out_shape = [n + k - 1 for n, k in zip(x.shape, h.shape)]
     elif mode == 'same':
+        if h.size <= 100 or x.size <= 6:  # orange lines
+            return False
+        if x.size*h.size < 100**2:  # green line
+            return False
         out_shape = x.shape
     elif mode == 'valid':
+        shape_diff = _prod([n - k for n, k in zip(x.shape, h.shape)])
+        # this decision was calculated with a single dimension
+        shape_diff = np.power(np.abs(shape_diff), 1 / x.ndim)
+        if (x.ndim == 1 and shape_diff < 300) or \
+           (x.ndim < 6 and shape_diff <= 2) or (shape_diff == 0):
+            return False
         out_shape = [n - k + 1 for n, k in zip(x.shape, h.shape)]
+        if h.size <= 90 or x.size <= 90:  # orange lines
+            return False
+        if x.size <= 1600 and h.size <= 1600:  # cyan box
+            return False
+        if x.size == h.size:  # purple diagonal
+            return False
+        if x.size*h.size < 800**2:  # green line
+            return False
     else:
         raise ValueError('mode is invalid')
 
@@ -517,15 +547,8 @@ def _fftconv_faster(x, h, mode):
     # convolution method is faster (discussed in scikit-image PR #1792)
     big_O_constant = 5e-6 if x.ndim > 1 else 4.81e-4
     direct_time = big_O_constant * (x.size * h.size * _prod(out_shape))
-    fft_time = np.sum([n * np.log(n) for n in (x.shape + h.shape +
-                                               tuple(out_shape))])
-    if mode == 'valid':
-        shape_diff = _prod([n - k for n, k in zip(x.shape, h.shape)])
-        # this decision was calculated with a single dimension
-        shape_diff = np.power(np.abs(shape_diff), 1 / x.ndim)
-        if (x.ndim == 1 and shape_diff < 300) or \
-           (x.ndim < 6 and shape_diff <= 2) or (shape_diff == 0):
-            return False
+    fft_time = np.sum(n * math.log(n) for n in (x.shape + h.shape +
+                                               tuple(out_shape)))
 
     return fft_time < direct_time
 
