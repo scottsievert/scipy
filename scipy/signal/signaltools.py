@@ -12,6 +12,7 @@ from ._upfirdn import _UpFIRDn, _output_len
 from scipy._lib.six import callable
 from scipy._lib._version import NumpyVersion
 from scipy import fftpack, linalg
+sum_builtin = sum
 from numpy import (allclose, angle, arange, argsort, array, asarray,
                    atleast_1d, atleast_2d, cast, dot, exp, expand_dims,
                    iscomplexobj, mean, ndarray, newaxis, ones, pi,
@@ -506,51 +507,24 @@ def _fftconv_faster(x, h, mode):
     early 2015 MacBook Pro with 8GB RAM and an Intel i5 processor.
     """
     if mode == 'full':
-        small_dims = set([min(h.shape), min(x.shape)])
-        large_dims = set([max(h.shape), max(x.shape)])
-        if h.ndim == x.ndim == 2 \
-        and (min(h.shape) < 50 or min(x.shape) < 50)\
-        and max(large_dims) > 40:
-            # (40, 2*n), (2, n)
-            return True
-        if h.size <= 90 or x.size <= 90:  # orange lines
-            return False
-        if x.size*h.size < 600**2:  # green line
-            return False
         out_shape = [n + k - 1 for n, k in zip(x.shape, h.shape)]
+        big_O_constant = 10963.92823819 if x.ndim == 1 else 8899.1104874
     elif mode == 'same':
-        if h.size <= 100 or x.size <= 6:  # orange lines
-            return False
-        if x.size*h.size < 100**2:  # green line
-            return False
         out_shape = x.shape
+        big_O_constant = 3155.18662568 if x.ndim == 1 else 34519.21021589
     elif mode == 'valid':
         shape_diff = _prod([n - k for n, k in zip(x.shape, h.shape)])
-        # this decision was calculated with a single dimension
-        shape_diff = np.power(np.abs(shape_diff), 1 / x.ndim)
-        if (x.ndim == 1 and shape_diff < 300) or \
-           (x.ndim < 6 and shape_diff <= 2) or (shape_diff == 0):
-            return False
         out_shape = [n - k + 1 for n, k in zip(x.shape, h.shape)]
-        if h.size <= 90 or x.size <= 90:  # orange lines
-            return False
-        if x.size <= 1600 and h.size <= 1600:  # cyan box
-            return False
-        if x.size == h.size:  # purple diagonal
-            return False
-        if x.size*h.size < 800**2:  # green line
-            return False
+        big_O_constant = 41954.28006344 if x.ndim == 1 else 66453.24316434
     else:
         raise ValueError('mode is invalid')
 
     # see whether the Fourier transform convolution method or the direct
     # convolution method is faster (discussed in scikit-image PR #1792)
-    big_O_constant = 5e-6 if x.ndim > 1 else 4.81e-4
-    direct_time = big_O_constant * (x.size * h.size * _prod(out_shape))
-    fft_time = np.sum(n * math.log(n) for n in (x.shape + h.shape +
+    direct_time = (x.size * h.size * _prod(out_shape))
+    fft_time = sum_builtin(n * np.log(n) for n in (x.shape + h.shape +
                                                tuple(out_shape)))
-
-    return fft_time < direct_time
+    return big_O_constant * fft_time < direct_time
 
 
 def _reverse_and_conj(x):
