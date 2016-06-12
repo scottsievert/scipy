@@ -104,6 +104,9 @@ def _inputs_swap_needed(mode, shape1, shape2):
 
         return not ok1
 
+    if mode == 'same' and len(shape1) == 1 and shape1[0] < shape2[0]:
+        return True
+
     return False
 
 
@@ -511,7 +514,7 @@ def _fftconv_faster(x, h, mode):
         big_O_constant = 10963.92823819 if x.ndim == 1 else 8899.1104874
     elif mode == 'same':
         out_shape = x.shape
-        big_O_constant = 3155.18662568 if x.ndim == 1 else 34519.21021589
+        big_O_constant = 7183.41306773 if x.ndim == 1 else 34519.21021589
     elif mode == 'valid':
         shape_diff = _prod([n - k for n, k in zip(x.shape, h.shape)])
         out_shape = [n - k + 1 for n, k in zip(x.shape, h.shape)]
