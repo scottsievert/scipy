@@ -538,15 +538,15 @@ def _np_conv_ok(volume, kernel, mode):
     return np_conv_ok and (volume.size >= kernel.size or mode != 'same')
 
 
-def choose_conv_method(volume, kernel, mode='full', try_=False):
+def choose_conv_method(in1, in2, mode='full', try_=False):
     """
-    A method to chose the fastest convolution method.
+    A method to find the fastest convolution method.
 
     Parameters
     ----------
-    volume : array_like
+    in1 : array_like
         The first argument passed into the convolution function.
-    kernel : array_like
+    in2 : array_like
         The second argument passed into the convolution function.
     mode : str {'full', 'valid', 'same'}, optional
         A string indicating the size of the output:
@@ -560,27 +560,30 @@ def choose_conv_method(volume, kernel, mode='full', try_=False):
         ``same``
            The output is the same size as `in1`, centered
            with respect to the 'full' output.
+    try_ : bool, optional
+        If True, run and time the convolution with `in1` and `in2` under both
+        methods and return the fastest method. If False (default), predict the
+        fastest method using precomputed values.
 
     Returns
     -------
     method : str
-        A string indicating which convolution to perform, either 'direct' or
-        'fft'
+        A string indicating which convolution method is fastest, either
+        'direct' or 'fft'
 
     See also
     --------
     convolve
-    fftconvolve
 
     Notes
     -----
     For large n, this function is accurate and can decide upon the fastest
     method to perform the convolution.  However, this function is not as
-    accurate for small n, or when any of the input or output sizes is small.
+    accurate for small n (when any dimension in the input or output is small).
 
     """
-    volume = asarray(volume)
-    kernel = asarray(kernel)
+    volume = asarray(in1)
+    kernel = asarray(in2)
 
     if try_:
         times = {}
