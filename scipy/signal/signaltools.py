@@ -6,6 +6,7 @@ from __future__ import division, print_function, absolute_import
 import warnings
 import threading
 import sys
+import time
 
 from . import sigtools
 from ._upfirdn import _UpFIRDn, _output_len
@@ -537,7 +538,58 @@ def _np_conv_ok(volume, kernel, mode):
     return np_conv_ok and (volume.size >= kernel.size or mode != 'same')
 
 
-def _choose_conv_method(volume, kernel, mode):
+def choose_conv_method(volume, kernel, mode='full', try_=False):
+    """
+    A method to chose the fastest convolution method.
+
+    Parameters
+    ----------
+    volume : array_like
+        The first argument passed into the convolution function.
+    kernel : array_like
+        The second argument passed into the convolution function.
+    mode : str {'full', 'valid', 'same'}, optional
+        A string indicating the size of the output:
+
+        ``full``
+           The output is the full discrete linear convolution
+           of the inputs. (Default)
+        ``valid``
+           The output consists only of those elements that do not
+           rely on the zero-padding.
+        ``same``
+           The output is the same size as `in1`, centered
+           with respect to the 'full' output.
+
+    Returns
+    -------
+    method : str
+        A string indicating which convolution to perform, either 'direct' or
+        'fft'
+
+    See also
+    --------
+    convolve
+    fftconvolve
+
+    Notes
+    -----
+    For large n, this function is accurate and can decide upon the fastest
+    method to perform the convolution.  However, this function is not as
+    accurate for small n, or when any of the input or output sizes is small.
+
+    """
+    volume = asarray(volume)
+    kernel = asarray(kernel)
+
+    if try_:
+        times = {}
+        for method in ['fft', 'direct']:
+            start = time.time()
+            convolve(volume, kernel, mode, method)
+            times[method] = time.time() - start
+        return 'fft' if times['fft'] < times['direct'] else 'direct'
+
     # fftconvolve doesn't support complex256
     if hasattr(np, "complex256"):
         if volume.dtype == 'complex256' or kernel.dtype == 'complex256':
@@ -657,7 +709,7 @@ def convolve(in1, in2, mode='full', method='auto'):
         raise ValueError("fftconvolve only supports numeric dtypes")
 
     if method == 'auto':
-        method = _choose_conv_method(volume, kernel, mode)
+        method = choose_conv_method(volume, kernel, mode)
 
     if method == 'fft':
         out = fftconvolve(volume, kernel, mode=mode)

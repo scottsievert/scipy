@@ -17,7 +17,7 @@ from scipy.signal import (
     hilbert, hilbert2, lfilter, lfilter_zi, filtfilt, butter, tf2zpk,
     invres, invresz, vectorstrength, signaltools, lfiltic, tf2sos, sosfilt,
     sosfilt_zi)
-from scipy.signal.signaltools import _filtfilt_gust
+from scipy.signal.signaltools import _filtfilt_gust, choose_conv_method
 
 
 class _TestConvolve(TestCase):
@@ -1538,6 +1538,29 @@ def check_filtfilt_gust(b, a, shape, axis, irlen=None):
     assert_allclose(yg, yo, rtol=1e-9, atol=1e-10)
     assert_allclose(zg1, zo1, rtol=1e-9, atol=1e-10)
     assert_allclose(zg2, zo2, rtol=1e-9, atol=1e-10)
+
+
+def test_choose_conv_method():
+    for mode in ['valid', 'same', 'full']:
+        for ndims in [1, 2]:
+            n, k, true_method = 2, 1, 'direct'
+            x = np.random.randn(*((n,) * ndims))
+            h = np.random.randn(*((k,) * ndims))
+
+            method = choose_conv_method(x, h, mode=mode)
+            assert method == true_method
+
+            # left out; didn't want to introduce randomness in tests
+            # method = choose_conv_method(x, h, mode, try_=True)
+            # assert method == true_method
+
+        n = 10
+        x = np.ones(n, dtype='complex256')
+        h = x.copy()
+        assert_equal(choose_conv_method(x, h, mode=mode), 'direct')
+        x = np.array([2**51], dtype=int)
+        h = x.copy()
+        assert_equal(choose_conv_method(x, h, mode=mode), 'direct')
 
 
 def test_filtfilt_gust():
