@@ -1550,17 +1550,16 @@ def test_choose_conv_method():
             method = choose_conv_method(x, h, mode=mode)
             assert method == true_method
 
-            # left out; didn't want to introduce randomness in tests
-            # method = choose_conv_method(x, h, mode, try_=True)
-            # assert method == true_method
-
         n = 10
         x = np.ones(n, dtype='complex256')
         h = x.copy()
         assert_equal(choose_conv_method(x, h, mode=mode), 'direct')
+        assert_raises(ValueError, choose_conv_method, x, h, mode=mode, method='fft')
+
         x = np.array([2**51], dtype=int)
         h = x.copy()
         assert_equal(choose_conv_method(x, h, mode=mode), 'direct')
+        assert_raises(ValueError, choose_conv_method, x, h, mode=mode, method='fft')
 
 
 def test_filtfilt_gust():
