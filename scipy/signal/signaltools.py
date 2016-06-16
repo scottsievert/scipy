@@ -538,6 +538,27 @@ def _np_conv_ok(volume, kernel, mode):
     return np_conv_ok and (volume.size >= kernel.size or mode != 'same')
 
 
+def _fftconvolve_valid(volume, kernel):
+    # fftconvolve doesn't support complex256
+    if hasattr(np, "complex256"):
+        if volume.dtype == 'complex256' or kernel.dtype == 'complex256':
+            return False
+
+    # for integer input,
+    # catch when more precision required than float provides (representing a
+    # integer as float can lose precision in fftconvolve if larger than 2**52)
+    if any([_numeric_arrays([x], kinds='ui') for x in [volume, kernel]]):
+        max_value = int(np.abs(volume).max()) * int(np.abs(kernel).max())
+        max_value *= int(min(volume.size, kernel.size))
+        if max_value > 2**np.finfo('float').nmant - 1:
+            return False
+
+    if volume.dtype.kind not in 'buifc' and kernel.dtype.kind not in 'buifc':
+        return False
+
+    return True
+
+
 def choose_conv_method(in1, in2, mode='full', method='auto', try_=False):
     """
     A method to find the fastest convolution method.
@@ -560,8 +581,6 @@ def choose_conv_method(in1, in2, mode='full', method='auto', try_=False):
         ``same``
            The output is the same size as `in1`, centered
            with respect to the 'full' output.
-    method : str {'fft', 'auto', 'direct'}, optional
-        A str indicating which convolution method would like to be used.
     try_ : bool, optional
         If True, run and time the convolution with `in1` and `in2` under both
         methods and return the fastest method. If False (default), predict the
@@ -600,28 +619,12 @@ def choose_conv_method(in1, in2, mode='full', method='auto', try_=False):
             times[method] = time.time() - start
         return 'fft' if times['fft'] < times['direct'] else 'direct'
 
-    # fftconvolve doesn't support complex256
-    if hasattr(np, "complex256"):
-        if volume.dtype == 'complex256' or kernel.dtype == 'complex256':
-            if method == 'fft':
-                raise ValueError('fftconvolve does not support dtype complex256')
-            return 'direct'
+    if not _fftconvolve_valid(volume, kernel):
+        return 'direct'
 
-    # for integer input,
-    # catch when more precision required than float provides (representing a
-    # integer as float can lose precision in fftconvolve if larger than 2**52)
-    if any([_numeric_arrays([x], kinds='ui') for x in [volume, kernel]]):
-        max_value = int(np.abs(volume).max()) * int(np.abs(kernel).max())
-        max_value *= int(min(volume.size, kernel.size))
-        if max_value > 2**np.finfo('float').nmant - 1:
-            if method == 'fft':
-                raise ValueError('fftconvolve uses floating point and may not '
-                                 'be precise enough')
-            return 'direct'
-
-    if _numeric_arrays([volume, kernel]) and _fftconv_faster(volume,
-                                                             kernel, mode):
+    if _numeric_arrays([volume, kernel]) and _fftconv_faster(volume, kernel, mode):
         return 'fft'
+
     return 'direct'
 
 
@@ -719,9 +722,10 @@ def convolve(in1, in2, mode='full', method='auto'):
         # Convolution is commutative; order doesn't have any effect on output
         volume, kernel = kernel, volume
 
-    if method == 'fft' and volume.dtype.kind not in 'buifc' \
-                       and kernel.dtype.kind not in 'buifc':
-        raise ValueError("fftconvolve only supports numeric dtypes")
+    fftconv_valid, message = _fftconvolve_valid(volume, kernel)
+    if method == 'fft' and not fftconvolve_valid:
+        raise ValueError('fftconvolve does not support the input: '
+                         '{}'.format(message))
 
     if method == 'auto':
         method = choose_conv_method(volume, kernel, mode=mode, method=method)
