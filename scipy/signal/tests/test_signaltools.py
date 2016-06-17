@@ -1548,18 +1548,22 @@ def test_choose_conv_method():
             h = np.random.randn(*((k,) * ndims))
 
             method = choose_conv_method(x, h, mode=mode)
-            assert method == true_method
+            assert_equal(method, true_method)
+            method_try = choose_conv_method(x, h, mode=mode, measure=True)
+            assert_(method in {'fft', 'direct'})
 
         n = 10
         x = np.ones(n, dtype='complex256')
         h = x.copy()
         assert_equal(choose_conv_method(x, h, mode=mode), 'direct')
-        assert_raises(ValueError, choose_conv_method, x, h, mode=mode, method='fft')
 
         x = np.array([2**51], dtype=int)
         h = x.copy()
         assert_equal(choose_conv_method(x, h, mode=mode), 'direct')
-        assert_raises(ValueError, choose_conv_method, x, h, mode=mode, method='fft')
+
+        x = [Decimal(3), Decimal(2)]
+        h = [Decimal(1), Decimal(4)]
+        assert_equal(choose_conv_method(x, h, mode=mode), 'direct')
 
 
 def test_filtfilt_gust():

@@ -559,7 +559,38 @@ def _fftconvolve_valid(volume, kernel):
     return True
 
 
-def choose_conv_method(in1, in2, mode='full', method='auto', try_=False):
+def _timeit_fast(stmt="pass", setup="pass", repeat=3):
+    """
+    Faster, less painstaking version of timeit_auto for automated 
+    testing of many inputs.
+
+    Will do only 1 loop (like IPython's timeit) with no repetitions 
+    (unlike IPython) for very slow functions.  Only does enough loops 
+    to take 5 ms, which seems to produce similar results on Windows at 
+    least, and avoids doing an extraneous cycle that isn't measured.
+    """
+    from timeit import Timer
+    t = Timer(stmt, setup)
+
+    # determine number so that 5 ms <= total time
+    x = 0
+    for i in range(0, 10):
+        number = 10**i
+        x = t.timeit(number) # seconds
+        if x >= 5e-3 / 10: # 5 ms for final test, 1/10th that for this one
+            break
+    if x > 1: # second
+        # If it's macroscopic, don't bother with repetitions
+        best = x
+    else:
+        number *= 10
+        r = t.repeat(repeat, number)
+        best = min(r)
+
+    usec = best * 1e6 / number
+    return usec
+
+def choose_conv_method(in1, in2, mode='full', measure=False):
     """
     A method to find the fastest convolution method.
 
@@ -581,21 +612,20 @@ def choose_conv_method(in1, in2, mode='full', method='auto', try_=False):
         ``same``
            The output is the same size as `in1`, centered
            with respect to the 'full' output.
-    try_ : bool, optional
-        If True, run and time the convolution with `in1` and `in2` under both
-        methods and return the fastest method. If False (default), predict the
-        fastest method using precomputed values.
+    measure : bool or num, optional
+        If True, run and time the convolution with `in1` and `in2` and return
+        the fastest method. If False (default), predict the fastest method
+        using precomputed values.
 
     Returns
     -------
     method : str
         A string indicating which convolution method is fastest, either
         'direct' or 'fft'
-
-    Raises
-    ------
-    ValueError
-        If the given convolution method does not support the input.
+    time_ratio : num, optional
+        This value is only returned if `measure` is not False and is how many
+        times longer the Fourier transform method of convolution took than the
+        direct method, ``time_fft / time_direct``.
 
     See also
     --------
@@ -611,22 +641,35 @@ def choose_conv_method(in1, in2, mode='full', method='auto', try_=False):
     volume = asarray(in1)
     kernel = asarray(in2)
 
-    if try_:
-        times = {}
+    if measure:
+        setup = ("from .signal import convolve\n"
+                 "x, h = {}, {}".format(volume.tolist(), kernel.tolist()))
+        times = {'fft': [], 'direct': []}
         for method in ['fft', 'direct']:
-            start = time.time()
-            convolve(volume, kernel, mode, method)
-            times[method] = time.time() - start
-        return 'fft' if times['fft'] < times['direct'] else 'direct'
+            to_time = 'convolve(x, h, mode="{}", method="{}")'.format(mode, method)
+            times[method] = _timeit_fast(to_time, setup)
 
-    if not _fftconvolve_valid(volume, kernel):
-        return 'direct'
+        chosen_method = 'fft' if times['fft'] < times['direct'] else 'direct'
+        return chosen_method, times['fft'] / times['direct']
+
+    # fftconvolve doesn't support complex256
+    if hasattr(np, "complex256"):
+        if volume.dtype == 'complex256' or kernel.dtype == 'complex256':
+            return 'direct'
+
+    # for integer input,
+    # catch when more precision required than float provides (representing a
+    # integer as float can lose precision in fftconvolve if larger than 2**52)
+    if any([_numeric_arrays([x], kinds='ui') for x in [volume, kernel]]):
+        max_value = int(np.abs(volume).max()) * int(np.abs(kernel).max())
+        max_value *= int(min(volume.size, kernel.size))
+        if max_value > 2**np.finfo('float').nmant - 1:
+            return 'direct'
 
     if _numeric_arrays([volume, kernel]) and _fftconv_faster(volume, kernel, mode):
         return 'fft'
 
     return 'direct'
-
 
 def convolve(in1, in2, mode='full', method='auto'):
     """
@@ -721,11 +764,6 @@ def convolve(in1, in2, mode='full', method='auto'):
     if _inputs_swap_needed(mode, volume.shape, kernel.shape):
         # Convolution is commutative; order doesn't have any effect on output
         volume, kernel = kernel, volume
-
-    fftconv_valid, message = _fftconvolve_valid(volume, kernel)
-    if method == 'fft' and not fftconvolve_valid:
-        raise ValueError('fftconvolve does not support the input: '
-                         '{}'.format(message))
 
     if method == 'auto':
         method = choose_conv_method(volume, kernel, mode=mode, method=method)
