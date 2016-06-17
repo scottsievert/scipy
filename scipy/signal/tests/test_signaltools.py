@@ -1549,8 +1549,11 @@ def test_choose_conv_method():
 
             method = choose_conv_method(x, h, mode=mode)
             assert_equal(method, true_method)
-            method_try = choose_conv_method(x, h, mode=mode, measure=True)
-            assert_(method in {'fft', 'direct'})
+
+            method_try, times = choose_conv_method(x, h, mode=mode, measure=True)
+            assert_(method_try in {'fft', 'direct'})
+            assert_(type(times) is dict)
+            assert_('fft' in times.keys() and 'direct' in times.keys())
 
         n = 10
         x = np.ones(n, dtype='complex256')
