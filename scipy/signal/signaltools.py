@@ -7,6 +7,7 @@ import warnings
 import threading
 import sys
 import time
+from timeit import Timer
 
 from . import sigtools
 from ._upfirdn import _UpFIRDn, _output_len
@@ -569,17 +570,16 @@ def _timeit_fast(stmt="pass", setup="pass", repeat=3):
     to take 5 ms, which seems to produce similar results on Windows at 
     least, and avoids doing an extraneous cycle that isn't measured.
     """
-    from timeit import Timer
     t = Timer(stmt, setup)
 
     # determine number so that 5 ms <= total time
     x = 0
     for i in range(0, 10):
         number = 10**i
-        x = t.timeit(number) # seconds
-        if x >= 5e-3 / 10: # 5 ms for final test, 1/10th that for this one
+        x = t.timeit(number)  # seconds
+        if x >= 5e-3 / 10:  # 5 ms for final test, 1/10th that for this one
             break
-    if x > 1: # second
+    if x > 1:  # second
         # If it's macroscopic, don't bother with repetitions
         best = x
     else:
@@ -642,7 +642,7 @@ def choose_conv_method(in1, in2, mode='full', measure=False):
     kernel = asarray(in2)
 
     if measure:
-        setup = ("from .signal import convolve\n"
+        setup = ("from scipy.signal import convolve\n"
                  "x, h = {}, {}".format(volume.tolist(), kernel.tolist()))
         times = {'fft': [], 'direct': []}
         for method in ['fft', 'direct']:
@@ -765,8 +765,12 @@ def convolve(in1, in2, mode='full', method='auto'):
         # Convolution is commutative; order doesn't have any effect on output
         volume, kernel = kernel, volume
 
+    if method == 'fft' and volume.dtype.kind not in 'buifc' and \
+                           kernel.dtype.kind not in 'buifc':
+        raise ValueError('fftconvolve does not support non-numeric types')
+
     if method == 'auto':
-        method = choose_conv_method(volume, kernel, mode=mode, method=method)
+        method = choose_conv_method(volume, kernel, mode=mode)
 
     if method == 'fft':
         out = fftconvolve(volume, kernel, mode=mode)
