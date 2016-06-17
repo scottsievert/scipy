@@ -13,11 +13,11 @@ import numpy as np
 from scipy.optimize import fmin
 from scipy import signal
 from scipy.signal import (
-    correlate, convolve, convolve2d, fftconvolve, hann,
+    correlate, convolve, convolve2d, fftconvolve, hann, choose_conv_method,
     hilbert, hilbert2, lfilter, lfilter_zi, filtfilt, butter, tf2zpk,
     invres, invresz, vectorstrength, signaltools, lfiltic, tf2sos, sosfilt,
     sosfilt_zi)
-from scipy.signal.signaltools import _filtfilt_gust, choose_conv_method
+from scipy.signal.signaltools import _filtfilt_gust
 
 
 class _TestConvolve(TestCase):

@@ -41,7 +41,7 @@ __all__ = ['correlate', 'fftconvolve', 'convolve', 'convolve2d', 'correlate2d',
            'lfiltic', 'sosfilt', 'deconvolve', 'hilbert', 'hilbert2',
            'cmplx_sort', 'unique_roots', 'invres', 'invresz', 'residue',
            'residuez', 'resample', 'resample_poly', 'detrend',
-           'lfilter_zi', 'sosfilt_zi',
+           'lfilter_zi', 'sosfilt_zi', 'choose_conv_method',
            'filtfilt', 'decimate', 'vectorstrength']
 
 
@@ -644,13 +644,13 @@ def choose_conv_method(in1, in2, mode='full', measure=False):
     if measure:
         setup = ("from scipy.signal import convolve\n"
                  "x, h = {}, {}".format(volume.tolist(), kernel.tolist()))
-        times = {'fft': [], 'direct': []}
+        times = {}
         for method in ['fft', 'direct']:
             to_time = 'convolve(x, h, mode="{}", method="{}")'.format(mode, method)
             times[method] = _timeit_fast(to_time, setup)
 
         chosen_method = 'fft' if times['fft'] < times['direct'] else 'direct'
-        return chosen_method, times['fft'] / times['direct']
+        return chosen_method, times
 
     # fftconvolve doesn't support complex256
     if hasattr(np, "complex256"):
