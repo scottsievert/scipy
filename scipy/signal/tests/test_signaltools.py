@@ -158,7 +158,7 @@ class TestConvolve(_TestConvolve):
                     h = (0.5 + np.random.rand(50)).astype(dtype)
 
                     if x.dtype.kind not in 'buifc' or dtype == np.complex256:
-                        assert_raises(ValueError, convolve, x, h, method='fft')
+                        assert_equal(choose_conv_method(x, h, mode=mode), 'direct')
                         continue
 
                     if x.dtype.kind != 'b':
@@ -193,8 +193,7 @@ class TestConvolve(_TestConvolve):
                 assert_equal(direct, 2**(2*n))
 
         assert_equal(convolve([4], [5], 'valid', 'fft'), 20)
-        assert_raises(ValueError, convolve, 2 * [Decimal(3)], 2 * [Decimal(4)],
-                      method='fft')
+        assert_equal('direct', choose_conv_method(2 * [Decimal(3)], 2 * [Decimal(4)]))
 
 class _TestConvolve2d(TestCase):
 
@@ -1136,8 +1135,8 @@ class _TestCorrelateReal(TestCase):
 
     def test_method(self):
         if self.dt == Decimal:
-            assert_raises(ValueError, correlate, 2*[Decimal(3)], 
-                          2*[Decimal(4)], method='fft')
+            method = choose_conv_method([Decimal(4)], [Decimal(3)])
+            assert_equal(method, 'direct')
         else:
             a, b, y_r = self._setup_rank3()
             y_fft = correlate(a, b, method='fft')
@@ -1543,7 +1542,7 @@ def check_filtfilt_gust(b, a, shape, axis, irlen=None):
 def test_choose_conv_method():
     for mode in ['valid', 'same', 'full']:
         for ndims in [1, 2]:
-            n, k, true_method = 2, 1, 'direct'
+            n, k, true_method = 8, 6, 'direct'
             x = np.random.randn(*((n,) * ndims))
             h = np.random.randn(*((k,) * ndims))
 

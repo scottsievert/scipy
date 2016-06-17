@@ -158,6 +158,10 @@ def correlate(in1, in2, mode='full', method='auto'):
         An N-dimensional array containing a subset of the discrete linear
         cross-correlation of `in1` with `in2`.
 
+    See also
+    --------
+    convolve : contains more documentation on `method`.
+
     Notes
     -----
     The correlation z of two d-dimensional arrays x and y is defined as:
@@ -724,12 +728,14 @@ def convolve(in1, in2, mode='full', method='auto'):
     --------
     numpy.polymul : performs polynomial multiplication (same operation, but
                     also accepts poly1d objects)
+    choose_conv_method : chooses the fastest appropriate convolution method
 
     Notes
     -----
-    ``method='fft'`` only works for numerical arrays as it relies on
-    `fftconvolve`. In certain cases (i.e., arrays of objects or when
-    rounding integers can lose precision), ``method='direct'`` is always used.
+    `method=fft` will use `fftconvolve`, which relies on floating point
+    numbers, precision/maxumimum value/dtype issues can occur. With
+    `method=auto`, `convolve` will avoid these by using `method=direct`.
+    However, `method=fft` can still if speed improvements desired.
 
     Examples
     --------
@@ -764,10 +770,6 @@ def convolve(in1, in2, mode='full', method='auto'):
     if _inputs_swap_needed(mode, volume.shape, kernel.shape):
         # Convolution is commutative; order doesn't have any effect on output
         volume, kernel = kernel, volume
-
-    if method == 'fft' and volume.dtype.kind not in 'buifc' and \
-                           kernel.dtype.kind not in 'buifc':
-        raise ValueError('fftconvolve does not support non-numeric types')
 
     if method == 'auto':
         method = choose_conv_method(volume, kernel, mode=mode)
