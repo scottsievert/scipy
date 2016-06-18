@@ -6,7 +6,6 @@ from __future__ import division, print_function, absolute_import
 import warnings
 import threading
 import sys
-import time
 from timeit import Timer
 
 from . import sigtools
@@ -33,7 +32,6 @@ if sys.version_info.major >= 3 and sys.version_info.minor >= 5:
     from math import gcd
 else:
     from fractions import gcd
-import math
 
 
 __all__ = ['correlate', 'fftconvolve', 'convolve', 'convolve2d', 'correlate2d',
@@ -364,8 +362,7 @@ def fftconvolve(in1, in2, mode="full"):
 
     Examples
     --------
-    Autocorrelation of white noise is an impulse.  (This is at least 100 times
-    as fast as `convolve`.)
+    Autocorrelation of white noise is an impulse.
 
     >>> from scipy import signal
     >>> sig = np.random.randn(1000)
@@ -511,7 +508,6 @@ def _fftconv_faster(x, h, mode):
         big_O_constant = oneD_big_O[h.size <= x.size] if x.ndim == 1 \
                                                       else 34519.21021589
     elif mode == 'valid':
-        shape_diff = _prod([n - k for n, k in zip(x.shape, h.shape)])
         out_shape = [n - k + 1 for n, k in zip(x.shape, h.shape)]
         big_O_constant = 41954.28006344 if x.ndim == 1 else 66453.24316434
     else:
@@ -641,6 +637,12 @@ def choose_conv_method(in1, in2, mode='full', measure=False):
     method to perform the convolution.  However, this function is not as
     accurate for small n (when any dimension in the input or output is small).
 
+    In practice, we found that this function estimates the faster method up to
+    a multiplicative factor of 5 (i.e., the estimated method is *at most* 5
+    times slower than the fastest method). The estimation values were tuned on
+    an early 2015 MacBook Pro with 8GB RAB but we found that the prediction
+    held *fairly* accurate across different machines.
+
     """
     volume = asarray(in1)
     kernel = asarray(in2)
@@ -733,14 +735,13 @@ def convolve(in1, in2, mode='full', method='auto'):
 
     Notes
     -----
-
     By default, `convolve` and `correlate` use `method=auto` which uses
     `choose_conv_method` to choose the method that is fastest using
     pre-computed values (pre-computed values by default; can perform timing
     with keyword argument). Because `fftconvolve` relies on floating point
     numbers, there are certain constraints that may force `method=direct` (more
     detail in `choose_conv_method` docstring). If `method=fft` is specified,
-    `fftconvolve` will be called and `choose_conv_method` will not be.
+    this function will go directly to `fftconvolve`.
 
     Examples
     --------
