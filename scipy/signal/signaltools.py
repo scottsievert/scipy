@@ -616,7 +616,7 @@ def choose_conv_method(in1, in2, mode='full', measure=False):
         ``same``
            The output is the same size as `in1`, centered
            with respect to the 'full' output.
-    measure : bool or num, optional
+    measure : bool, optional
         If True, run and time the convolution with `in1` and `in2` and return
         the fastest method. If False (default), predict the fastest method
         using precomputed values.
@@ -626,14 +626,14 @@ def choose_conv_method(in1, in2, mode='full', measure=False):
     method : str
         A string indicating which convolution method is fastest, either
         'direct' or 'fft'
-    time_ratio : num, optional
-        This value is only returned if `measure` is not False and is how many
-        times longer the Fourier transform method of convolution took than the
-        direct method, ``time_fft / time_direct``.
+    times : dict, optional
+        A dictionary containing the times needed for each method. This value is
+        only returned if `measure=True`.
 
     See also
     --------
     convolve
+    correlate
 
     Notes
     -----
@@ -733,7 +733,8 @@ def convolve(in1, in2, mode='full', method='auto'):
 
     Notes
     -----
-    By default, `convolve` and `correlate` use method=auto which uses
+
+    By default, `convolve` and `correlate` use `method=auto` which uses
     `choose_conv_method` to choose the method that is fastest using
     pre-computed values (pre-computed values by default; can perform timing
     with keyword argument). Because `fftconvolve` relies on floating point
