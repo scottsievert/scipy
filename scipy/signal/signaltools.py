@@ -13,7 +13,6 @@ from ._upfirdn import _UpFIRDn, _output_len
 from scipy._lib.six import callable
 from scipy._lib._version import NumpyVersion
 from scipy import fftpack, linalg
-sum_builtin = sum
 from numpy import (allclose, angle, arange, argsort, array, asarray,
                    atleast_1d, atleast_2d, cast, dot, exp, expand_dims,
                    iscomplexobj, mean, ndarray, newaxis, ones, pi,
@@ -33,6 +32,7 @@ if sys.version_info.major >= 3 and sys.version_info.minor >= 5:
     from math import gcd
 else:
     from fractions import gcd
+sum_builtin = sum
 
 
 __all__ = ['correlate', 'fftconvolve', 'convolve', 'convolve2d', 'correlate2d',
@@ -504,8 +504,10 @@ def _fftconv_faster(x, h, mode):
     elif mode == 'same':
         out_shape = x.shape
         oneD_big_O = {True: 7183.41306773, False: 856.78174111}
-        big_O_constant = oneD_big_O[h.size <= x.size] if x.ndim == 1 \
-                                                      else 34519.21021589
+        if x.ndim == 1:
+            big_O_constant = oneD_big_O[h.size <= x.size]
+        else:
+            big_O_constant = 34519.21021589
     elif mode == 'valid':
         out_shape = [n - k + 1 for n, k in zip(x.shape, h.shape)]
         big_O_constant = 41954.28006344 if x.ndim == 1 else 66453.24316434
@@ -589,6 +591,7 @@ def _timeit_fast(stmt="pass", setup="pass", repeat=3):
     usec = best * 1e6 / number
     return usec
 
+
 def choose_conv_method(in1, in2, mode='full', measure=False):
     """
     A method to find the fastest convolution method.
@@ -651,7 +654,8 @@ def choose_conv_method(in1, in2, mode='full', measure=False):
                  "x, h = {}, {}".format(volume.tolist(), kernel.tolist()))
         times = {}
         for method in ['fft', 'direct']:
-            to_time = 'convolve(x, h, mode="{}", method="{}")'.format(mode, method)
+            to_time = 'convolve(x, h, mode="{}", method="{}")'.format(mode,
+                                                                      method)
             times[method] = _timeit_fast(to_time, setup)
 
         chosen_method = 'fft' if times['fft'] < times['direct'] else 'direct'
@@ -671,10 +675,12 @@ def choose_conv_method(in1, in2, mode='full', measure=False):
         if max_value > 2**np.finfo('float').nmant - 1:
             return 'direct'
 
-    if _numeric_arrays([volume, kernel]) and _fftconv_faster(volume, kernel, mode):
-        return 'fft'
+    if _numeric_arrays([volume, kernel]):
+        if _fftconv_faster(volume, kernel, mode):
+            return 'fft'
 
     return 'direct'
+
 
 def convolve(in1, in2, mode='full', method='auto'):
     """
@@ -930,8 +936,8 @@ def wiener(im, mysize=None, noise=None):
     lMean = correlate(im, ones(mysize), 'same') / product(mysize, axis=0)
 
     # Estimate the local variance
-    lVar = (correlate(im ** 2, ones(mysize), 'same') / product(mysize, axis=0)
-            - lMean ** 2)
+    lVar = (correlate(im ** 2, ones(mysize), 'same') /
+            product(mysize, axis=0) - lMean ** 2)
 
     # Estimate the noise power if needed.
     if noise is None:
@@ -1261,8 +1267,9 @@ def lfilter(b, a, x, axis=-1, zi=None):
     >>> from scipy import signal
     >>> import matplotlib.pyplot as plt
     >>> t = np.linspace(-1, 1, 201)
-    >>> x = (np.sin(2*np.pi*0.75*t*(1-t) + 2.1) + 0.1*np.sin(2*np.pi*1.25*t + 1)
-    ...      + 0.18*np.cos(2*np.pi*3.85*t))
+    >>> x = (np.sin(2*np.pi*0.75*t*(1-t) + 2.1) +
+    ...      0.1*np.sin(2*np.pi*1.25*t + 1) +
+    ...      0.18*np.cos(2*np.pi*3.85*t))
     >>> xn = x + np.random.randn(len(t)) * 0.08
 
     Create an order 3 lowpass butterworth filter:
@@ -1307,7 +1314,8 @@ def lfilter(b, a, x, axis=-1, zi=None):
         x = np.asarray(x)
         inputs = [b, a, x]
         if zi is not None:
-            # _linear_filter does not broadcast zi, but does do expansion of singleton dims.
+            # _linear_filter does not broadcast zi, but does do expansion of
+            # singleton dims.
             zi = np.asarray(zi)
             if zi.ndim != x.ndim:
                 raise ValueError('object of too small depth for desired array')
@@ -1330,7 +1338,8 @@ def lfilter(b, a, x, axis=-1, zi=None):
                         raise ValueError('Unexpected shape for zi: expected '
                                          '%s, found %s.' %
                                          (expected_shape, zi.shape))
-                zi = np.lib.stride_tricks.as_strided(zi, expected_shape, strides)
+                zi = np.lib.stride_tricks.as_strided(zi, expected_shape,
+                                                     strides)
             inputs.append(zi)
         dtype = np.result_type(*inputs)
 
@@ -1543,14 +1552,15 @@ def hilbert(x, N=None, axis=-1):
     >>> signal *= (1.0 + 0.5 * np.sin(2.0*np.pi*3.0*t) )
 
     The amplitude envelope is given by magnitude of the analytic signal. The
-    instantaneous frequency can be obtained by differentiating the instantaneous
-    phase in respect to time. The instantaneous phase corresponds to the phase
-    angle of the analytic signal.
+    instantaneous frequency can be obtained by differentiating the
+    instantaneous phase in respect to time. The instantaneous phase corresponds
+    to the phase angle of the analytic signal.
 
     >>> analytic_signal = hilbert(signal)
     >>> amplitude_envelope = np.abs(analytic_signal)
     >>> instantaneous_phase = np.unwrap(np.angle(analytic_signal))
-    >>> instantaneous_frequency = np.diff(instantaneous_phase) / (2.0*np.pi) * fs
+    >>> instantaneous_frequency = (np.diff(instantaneous_phase) /
+    ...                            (2.0*np.pi) * fs)
 
     >>> fig = plt.figure()
     >>> ax0 = fig.add_subplot(211)
@@ -1568,8 +1578,9 @@ def hilbert(x, N=None, axis=-1):
     .. [1] Wikipedia, "Analytic signal".
            http://en.wikipedia.org/wiki/Analytic_signal
     .. [2] Leon Cohen, "Time-Frequency Analysis", 1995. Chapter 2.
-    .. [3] Alan V. Oppenheim, Ronald W. Schafer. Discrete-Time Signal Processing,
-           Third Edition, 2009. Chapter 12. ISBN 13: 978-1292-02572-8
+    .. [3] Alan V. Oppenheim, Ronald W. Schafer. Discrete-Time Signal
+           Processing, Third Edition, 2009. Chapter 12.
+           ISBN 13: 978-1292-02572-8
 
     """
     x = asarray(x)
@@ -1898,8 +1909,8 @@ def residue(b, a, tol=1e-3, rtype='avg'):
                 term2 = polymul(bn, polyder(an, 1))
                 bn = polysub(term1, term2)
                 an = polymul(an, an)
-            r[indx + m - 1] = (polyval(bn, pout[n]) / polyval(an, pout[n])
-                               / factorial(sig - m))
+            r[indx + m - 1] = (polyval(bn, pout[n]) / polyval(an, pout[n]) /
+                               factorial(sig - m))
         indx += sig
     return r / rscale, p, k
 
