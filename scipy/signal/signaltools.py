@@ -729,13 +729,17 @@ def convolve(in1, in2, mode='full', method='auto'):
     numpy.polymul : performs polynomial multiplication (same operation, but
                     also accepts poly1d objects)
     choose_conv_method : chooses the fastest appropriate convolution method
+    fftconvolve
 
     Notes
     -----
-    `method=fft` will use `fftconvolve`, which relies on floating point
-    numbers, precision/maxumimum value/dtype issues can occur. With
-    `method=auto`, `convolve` will avoid these by using `method=direct`.
-    However, `method=fft` can still if speed improvements desired.
+    By default, `convolve` and `correlate` use method=auto which uses
+    `choose_conv_method` to choose the method that is fastest using
+    pre-computed values (pre-computed values by default; can perform timing
+    with keyword argument). Because `fftconvolve` relies on floating point
+    numbers, there are certain constraints that may force `method=direct` (more
+    detail in `choose_conv_method` docstring). If `method=fft` is specified,
+    `fftconvolve` will be called and `choose_conv_method` will not be.
 
     Examples
     --------
