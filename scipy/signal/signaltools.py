@@ -120,8 +120,6 @@ def correlate(in1, in2, mode='full', method='auto'):
         First input.
     in2 : array_like
         Second input. Should have the same number of dimensions as `in1`.
-        If operating in 'valid' mode, either `in1` or `in2` must be
-        at least as large as the other in every dimension.
     mode : str {'full', 'valid', 'same'}, optional
         A string indicating the size of the output:
 
@@ -130,7 +128,8 @@ def correlate(in1, in2, mode='full', method='auto'):
            of the inputs. (Default)
         ``valid``
            The output consists only of those elements that do not
-           rely on the zero-padding.
+           rely on the zero-padding. In 'valid' mode, either `in1` or `in2`
+           must be at least as large as the other in every dimension.
         ``same``
            The output is the same size as `in1`, centered
            with respect to the 'full' output.
@@ -144,9 +143,8 @@ def correlate(in1, in2, mode='full', method='auto'):
            The Fast Fourier Transform is used to perform the correlation more
            quickly (only available for numerical arrays.)
         ``auto``
-           A rough estimate to see which correlation method is faster (the
-           Fourier transform or direct method) and that method is chosen
-           (default). See notes for more detail.
+           Automatically chooses direct or Fourier method based on an estimate
+           of which is faster (default).  See `convolve` Notes for more detail.
 
            .. versionadded:: 0.18.0
 
@@ -162,7 +160,7 @@ def correlate(in1, in2, mode='full', method='auto'):
 
     Notes
     -----
-    The correlation z of two d-dimensional arrays x and y is defined as:
+    The correlation z of two d-dimensional arrays x and y is defined as::
 
       z[...,k,...] = sum[..., i_l, ...]
                          x[..., i_l,...] * conj(y[..., i_l + k,...])
@@ -562,12 +560,12 @@ def _fftconvolve_valid(volume, kernel):
 
 def _timeit_fast(stmt="pass", setup="pass", repeat=3):
     """
-    Faster, less painstaking version of timeit_auto for automated 
+    Faster, less painstaking version of timeit_auto for automated
     testing of many inputs.
 
-    Will do only 1 loop (like IPython's timeit) with no repetitions 
-    (unlike IPython) for very slow functions.  Only does enough loops 
-    to take 5 ms, which seems to produce similar results on Windows at 
+    Will do only 1 loop (like IPython's timeit) with no repetitions
+    (unlike IPython) for very slow functions.  Only does enough loops
+    to take 5 ms, which seems to produce similar results on Windows at
     least, and avoids doing an extraneous cycle that isn't measured.
     """
     t = Timer(stmt, setup)
@@ -690,8 +688,6 @@ def convolve(in1, in2, mode='full', method='auto'):
         First input.
     in2 : array_like
         Second input. Should have the same number of dimensions as `in1`.
-        If operating in 'valid' mode, either `in1` or `in2` must be
-        at least as large as the other in every dimension.
     mode : str {'full', 'valid', 'same'}, optional
         A string indicating the size of the output:
 
@@ -700,7 +696,8 @@ def convolve(in1, in2, mode='full', method='auto'):
            of the inputs. (Default)
         ``valid``
            The output consists only of those elements that do not
-           rely on the zero-padding.
+           rely on the zero-padding. In 'valid' mode, either `in1` or `in2`
+           must be at least as large as the other in every dimension.
         ``same``
            The output is the same size as `in1`, centered
            with respect to the 'full' output.
@@ -714,9 +711,8 @@ def convolve(in1, in2, mode='full', method='auto'):
            The Fourier Transform is used to perform the convolution by calling
            `fftconvolve`.
         ``auto``
-           A rough estimate to see which convolution method is faster (the
-           Fourier transform or direct method) and that method is chosen
-           (default).
+           Automatically chooses direct or Fourier method based on an estimate
+           of which is faster (default).  See Notes for more detail.
 
            .. versionadded:: 0.18.0
 
