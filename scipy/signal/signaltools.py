@@ -18,10 +18,11 @@ from numpy import (allclose, angle, arange, argsort, array, asarray,
                    atleast_1d, atleast_2d, cast, dot, exp, expand_dims,
                    iscomplexobj, mean, ndarray, newaxis, ones, pi,
                    poly, polyadd, polyder, polydiv, polymul, polysub, polyval,
-                   prod, product, r_, ravel, real_if_close, reshape,
+                   product, r_, ravel, real_if_close, reshape,
                    roots, sort, sum, take, transpose, unique, where, zeros,
                    zeros_like)
 import numpy as np
+import math
 from scipy.special import factorial
 from .windows import get_window
 from ._arraytools import axis_slice, axis_reverse, odd_ext, even_ext, const_ext
@@ -514,8 +515,8 @@ def _fftconv_faster(x, h, mode):
     # see whether the Fourier transform convolution method or the direct
     # convolution method is faster (discussed in scikit-image PR #1792)
     direct_time = (x.size * h.size * _prod(out_shape))
-    fft_time = sum_builtin(n * np.log(n) for n in (x.shape + h.shape +
-                                               tuple(out_shape)))
+    fft_time = sum_builtin(n * math.log(n) for n in (x.shape + h.shape +
+                                                     tuple(out_shape)))
     return big_O_constant * fft_time < direct_time
 
 
