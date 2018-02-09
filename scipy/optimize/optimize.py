@@ -3061,6 +3061,370 @@ def show_options(solver=None, method=None, disp=True):
         return text
 
 
+class Optimizer(object):
+    def __init__(self, **kwds):
+        self.func = None
+        self.args = ()
+        self.x0 = None
+        self.bounds = None
+        self.x = None
+        self.N = 0
+        self.fun = None
+        self.jac = None
+        self.hess = None
+        self.hess_inv = None
+
+        self.status = 0
+        self.success = False
+        self.message = None
+        self.maxiter = None
+        self.maxfun = None
+        self.warn_flag = 0
+        self.disp = False
+        self.options = {}
+
+        self.nit = 0
+        self.njev = 0
+        self.nhev = 0
+        self.nfev = 0
+        self.maxcv = np.nan
+
+        self._optimize_result = None
+
+    def __call__(self):
+        for x, fun in self:
+            self.x, self.fun = x, fun
+            if (self.converged() or self.nfev >= self.maxfun or
+                    self.nit >= self.maxiter):
+                break
+
+        self._finish_up()
+        return self._optimize_result
+
+    def solve(self):
+        return self.__call__()
+
+    def converged(self):
+        # Truth as to whether solver has converged
+        # abstract method to be overidden
+        raise NotImplementedError
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        # should return x, fun on each iteration, increasing nit and nfun, etc
+        # abstract method to be overridden
+        raise NotImplementedError
+    next = __next__
+
+    def _call_func(self, x):
+        val = self.func(x, *self.args)
+        self.nfev += 1
+        return val
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *args):
+        return self._finish_up()
+
+    def _finish_up(self):
+        self._optimize_result = OptimizeResult(
+            x=self.x,
+            fun=self.fun,
+            nfev=self.nfev,
+            nit=self.nit,
+            message=self.message,
+            success=(self.warning_flag is not True))
+
+    def show_options(self):
+        # each optimizer should return their own options text.
+        return ""
+
+
+class Optimize_neldermead(Optimizer):
+    """
+    Minimize a function using the downhill simplex algorithm.
+
+    This algorithm only uses function values, not derivatives or second
+    derivatives.
+
+    Parameters
+    ----------
+    func : callable func(x,*args)
+        The objective function to be minimized.
+    x0 : ndarray
+        Initial guess.
+    args : tuple, optional
+        Extra arguments passed to func, i.e. ``f(x,*args)``.
+    xtol : float, optional
+        Absolute error in xopt between iterations that is acceptable for
+        convergence.
+    ftol : number, optional
+        Absolute error in func(xopt) between iterations that is acceptable for
+        convergence.
+    maxiter : int, optional
+        Maximum number of iterations to perform.
+    maxfun : number, optional
+        Maximum number of function evaluations to make.
+    full_output : bool, optional
+        Set to True if fopt and warnflag outputs are desired.
+    disp : bool, optional
+        Set to True to print convergence messages.
+    retall : bool, optional
+        Set to True to return list of solutions at each iteration.
+    callback : callable, optional
+        Called after each iteration, as callback(xk), where xk is the
+        current parameter vector.
+    initial_simplex : array_like of shape (N + 1, N), optional
+        Initial simplex. If given, overrides `x0`.
+        ``initial_simplex[j,:]`` should contain the coordinates of
+        the j-th vertex of the ``N+1`` vertices in the simplex, where
+        ``N`` is the dimension.
+
+    Returns
+    -------
+        xopt : ndarray
+            Parameter that minimizes function.
+        fopt : float
+            Value of function at minimum: ``fopt = func(xopt)``.
+        iter : int
+            Number of iterations performed.
+        funcalls : int
+            Number of function calls made.
+        warnflag : int
+            1 : Maximum number of function evaluations made.
+            2 : Maximum number of iterations reached.
+        allvecs : list
+            Solution at each iteration.
+
+        See also
+        --------
+        minimize: Interface to minimization algorithms for multivariate
+            functions. See the 'Nelder-Mead' `method` in particular.
+
+        Notes
+        -----
+        Uses a Nelder-Mead simplex algorithm to find the minimum of function of
+        one or more variables.
+
+        This algorithm has a long history of successful use in applications.
+        But it will usually be slower than an algorithm that uses first or
+        second derivative information. In practice it can have poor
+        performance in high-dimensional problems and is not robust to
+        minimizing complicated functions. Additionally, there currently is no
+        complete theory describing when the algorithm will successfully
+        converge to the minimum, or how fast it will if it does. Both the ftol and
+        xtol criteria must be met for convergence.
+
+        Examples
+        --------
+        >>> def f(x):
+        ...     return x**2
+
+        >>> from scipy import optimize
+
+        >>> minimum = optimize.fmin(f, 1)
+        Optimization terminated successfully.
+                 Current function value: 0.000000
+                 Iterations: 17
+                 Function evaluations: 34
+        >>> minimum[0]
+        -8.8817841970012523e-16
+
+        References
+        ----------
+        .. [1] Nelder, J.A. and Mead, R. (1965), "A simplex method for function
+               minimization", The Computer Journal, 7, pp. 308-313
+
+        .. [2] Wright, M.H. (1996), "Direct Search Methods: Once Scorned, Now
+               Respectable", in Numerical Analysis 1995, Proceedings of the
+               1995 Dundee Biennial Conference in Numerical Analysis, D.F.
+               Griffiths and G.A. Watson (Eds.), Addison Wesley Longman,
+               Harlow, UK, pp. 191-208.
+
+    """
+    def __init__(self, func, x0, args=(), xatol=1e-4, fatol=1e-4, maxiter=None,
+                 maxfun=None, full_output=False, disp=True, callback=None,
+                 initial_simplex=None, **unknown_options):
+        # TODO pass in all the options.
+        super.__init__(Optimize_neldermead, self).__init__()
+        _check_unknown_options(unknown_options)
+        maxfun = maxfev
+
+        retall = return_all
+
+        if adaptive:
+            dim = float(len(x0))
+            rho = 1
+            chi = 1 + 2 / dim
+            psi = 0.75 - 1 / (2 * dim)
+            sigma = 1 - 1 / dim
+        else:
+            rho = 1
+            chi = 2
+            psi = 0.5
+            sigma = 0.5
+
+        nonzdelt = 0.05
+        zdelt = 0.00025
+
+        x0 = asfarray(x0).flatten()
+
+        if initial_simplex is None:
+            N = len(x0)
+
+            sim = numpy.zeros((N + 1, N), dtype=x0.dtype)
+            sim[0] = x0
+            for k in range(N):
+                y = numpy.array(x0, copy=True)
+                if y[k] != 0:
+                    y[k] = (1 + nonzdelt) * y[k]
+                else:
+                    y[k] = zdelt
+                sim[k + 1] = y
+        else:
+            sim = np.asfarray(initial_simplex).copy()
+            if sim.ndim != 2 or sim.shape[0] != sim.shape[1] + 1:
+                raise ValueError("`initial_simplex` should be an array of shape (N+1,N)")
+            if len(x0) != sim.shape[1]:
+                raise ValueError("Size of `initial_simplex` is not consistent with `x0`")
+            N = sim.shape[1]
+
+        if retall:
+            allvecs = [sim[0]]
+
+        # If neither are set, then set both to default
+        if maxiter is None and maxfun is None:
+            maxiter = N * 200
+            maxfun = N * 200
+        elif maxiter is None:
+            # Convert remaining Nones, to np.inf, unless the other is np.inf, in
+            # which case use the default to avoid unbounded iteration
+            if maxfun == np.inf:
+                maxiter = N * 200
+            else:
+                maxiter = np.inf
+        elif maxfun is None:
+            if maxiter == np.inf:
+                maxfun = N * 200
+            else:
+                maxfun = np.inf
+
+        one2np1 = list(range(1, N + 1))
+        fsim = numpy.zeros((N + 1,), float)
+
+        for k in range(N + 1):
+            fsim[k] = func(sim[k])
+
+        ind = numpy.argsort(fsim)
+        fsim = numpy.take(fsim, ind, 0)
+        # sort so sim[0,:] has the lowest function value
+        sim = numpy.take(sim, ind, 0)
+
+        self.nit = 1
+
+    def converged(self):
+        if (numpy.max(numpy.ravel(numpy.abs(sim[1:] - sim[0]))) <= self.xatol and
+                numpy.max(numpy.abs(fsim[0] - fsim[1:])) <= self.fatol):
+            return True
+        return False
+
+    def __next__(self):
+        xbar = numpy.add.reduce(sim[:-1], 0) / N
+        xr = (1 + rho) * xbar - rho * sim[-1]
+        fxr = self._call_func(xr)
+        doshrink = 0
+
+        if fxr < fsim[0]:
+            xe = (1 + rho * chi) * xbar - rho * chi * sim[-1]
+            fxe = self._call_func(xe)
+
+            if fxe < fxr:
+                sim[-1] = xe
+                fsim[-1] = fxe
+            else:
+                sim[-1] = xr
+                fsim[-1] = fxr
+        else:  # fsim[0] <= fxr
+            if fxr < fsim[-2]:
+                sim[-1] = xr
+                fsim[-1] = fxr
+            else:  # fxr >= fsim[-2]
+                # Perform contraction
+                if fxr < fsim[-1]:
+                    xc = (1 + psi * rho) * xbar - psi * rho * sim[-1]
+                    fxc = self._call_func(xc)
+
+                    if fxc <= fxr:
+                        sim[-1] = xc
+                        fsim[-1] = fxc
+                    else:
+                        doshrink = 1
+                else:
+                    # Perform an inside contraction
+                    xcc = (1 - psi) * xbar + psi * sim[-1]
+                    fxcc = self._call_func(xcc)
+
+                    if fxcc < fsim[-1]:
+                        sim[-1] = xcc
+                        fsim[-1] = fxcc
+                    else:
+                        doshrink = 1
+
+                if doshrink:
+                    for j in one2np1:
+                        sim[j] = sim[0] + sigma * (sim[j] - sim[0])
+                        fsim[j] = func(sim[j])
+
+            ind = numpy.argsort(fsim)
+            sim = numpy.take(sim, ind, 0)
+            fsim = numpy.take(fsim, ind, 0)
+
+            self.x = sim[0]
+            self.fun = np.min(fsim)
+
+            if self.callback is not None:
+                self.callback(sim[0])
+
+            self.nit += 1
+            if retall:
+                allvecs.append(sim[0])
+
+    def _finish_up(self):
+        if self.nfev >= self.maxfun:
+            self.warn_flag = 1
+            self.message = _status_message['maxfev']
+            if self.disp:
+                print('Warning: ' + self.message)
+        elif self.nit >= self.maxiter:
+            self.warn_flag = 2
+            self.message = _status_message['maxiter']
+            if self.disp:
+                print('Warning: ' + self.message)
+        else:
+            self.message = _status_message['success']
+            if self.disp:
+                print(self.message)
+                print("         Current function value: %f" % self.fun)
+                print("         Iterations: %d" % self.nit)
+                print("         Function evaluations: %d" % self.nfev)
+
+        self._optimize_result = OptimizeResult(fun=self.fun, nit=self.nit,
+                                               nfev=self.nfev,
+                                               status=self.warn_flag,
+                                               success=(self.warn_flag == 0 and
+                                                        self.converged()),
+                                               message=self.message,
+                                               x=self.x,
+                                               final_simplex=(sim, fsim))
+        if retall:
+            self._optimize_result['allvecs'] = allvecs
+
+        return self._optimize_result
+
+
 def main():
     import time
 
