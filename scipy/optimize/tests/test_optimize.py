@@ -596,7 +596,7 @@ class TestOptimizeSimple(CheckOptimize):
         assert_almost_equal(res.fun, c.fun)
         assert_equal(res.status, 1)
         assert_(res.success is False)
-        assert_equal(res.message.decode(), 'STOP: TOTAL NO. of ITERATIONS REACHED LIMIT')
+        assert_equal(res.message, 'STOP: TOTAL NO. of ITERATIONS REACHED LIMIT')
 
     def test_minimize_l_bfgs_b(self):
         # Minimize with L-BFGS-B method
@@ -1252,7 +1252,7 @@ class TestIterationLimits(object):
                       method=method, options={"maxfev":mfev})
                 assert_(self.funcalls == res["nfev"])
                 if res["success"]:
-                    assert_(res["nfev"] < mfev)
+                    assert_(res["nfev"] <= mfev)
                 else:
                     assert_(res["nfev"] >= mfev)
             for mit in [50, 500,5000]:
