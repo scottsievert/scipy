@@ -97,7 +97,7 @@ class OptimizeResult(dict):
     nfev, njev, nhev : int
         Number of evaluations of the objective functions and of its
         Jacobian and Hessian.
-    nit : int
+    steps : int
         Number of iterations performed by the optimizer.
     maxcv : float
         The maximum constraint violation.
@@ -639,7 +639,7 @@ def _minimize_neldermead(func, x0, args=(), callback=None,
             print("         Iterations: %d" % iterations)
             print("         Function evaluations: %d" % fcalls[0])
 
-    result = OptimizeResult(fun=fval, nit=iterations, nfev=fcalls[0],
+    result = OptimizeResult(fun=fval, steps=iterations, nfev=fcalls[0],
                             status=warnflag, success=(warnflag == 0),
                             message=msg, x=x, final_simplex=(sim, fsim))
     if retall:
@@ -1060,7 +1060,7 @@ def _minimize_bfgs(fun, x0, args=(), jac=None, callback=None,
     result = OptimizeResult(fun=fval, jac=gfk, hess_inv=Hk, nfev=func_calls[0],
                             njev=grad_calls[0], status=warnflag,
                             success=(warnflag == 0), message=msg, x=xk,
-                            nit=k)
+                            steps=k)
     if retall:
         result['allvecs'] = allvecs
     return result
@@ -1375,7 +1375,7 @@ def _minimize_cg(fun, x0, args=(), jac=None, callback=None,
     result = OptimizeResult(fun=fval, jac=gfk, nfev=func_calls[0],
                             njev=grad_calls[0], status=warnflag,
                             success=(warnflag == 0), message=msg, x=xk,
-                            nit=k)
+                            steps=k)
     if retall:
         result['allvecs'] = allvecs
     return result
@@ -1538,7 +1538,7 @@ def _minimize_newtoncg(fun, x0, args=(), jac=None, hess=None, hessp=None,
         result = OptimizeResult(fun=fval, jac=gfk, nfev=fcalls[0],
                                 njev=gcalls[0], nhev=hcalls, status=warnflag,
                                 success=(warnflag == 0), message=msg, x=xk,
-                                nit=k)
+                                steps=k)
         if retall:
             result['allvecs'] = allvecs
         return result
@@ -2130,9 +2130,9 @@ def _minimize_scalar_brent(func, brack=None, args=(),
                   full_output=True, maxiter=maxiter)
     brent.set_bracket(brack)
     brent.optimize()
-    x, fval, nit, nfev = brent.get_result(full_output=True)
-    return OptimizeResult(fun=fval, x=x, nit=nit, nfev=nfev,
-                          success=nit < maxiter)
+    x, fval, steps, nfev = brent.get_result(full_output=True)
+    return OptimizeResult(fun=fval, x=x, steps=nit, nfev=nfev,
+                          success=steps < maxiter)
 
 
 def golden(func, args=(), brack=None, tol=_epsilon,
@@ -2248,7 +2248,7 @@ def _minimize_scalar_golden(func, brack=None, args=(),
     f1 = func(*((x1,) + args))
     f2 = func(*((x2,) + args))
     funcalls += 2
-    nit = 0
+    steps = 0
     for i in xrange(maxiter):
         if numpy.abs(x3 - x0) <= tol * (numpy.abs(x1) + numpy.abs(x2)):
             break
@@ -2265,7 +2265,7 @@ def _minimize_scalar_golden(func, brack=None, args=(),
             f2 = f1
             f1 = func(*((x1,) + args))
         funcalls += 1
-        nit += 1
+        steps += 1
     if (f1 < f2):
         xmin = x1
         fval = f1
@@ -2274,7 +2274,7 @@ def _minimize_scalar_golden(func, brack=None, args=(),
         fval = f2
 
     return OptimizeResult(fun=fval, nfev=funcalls, x=xmin, nit=nit,
-                          success=nit < maxiter)
+                          success=steps < maxiter)
 
 
 def bracket(func, xa=0.0, xb=1.0, args=(), grow_limit=110.0, maxiter=1000):
