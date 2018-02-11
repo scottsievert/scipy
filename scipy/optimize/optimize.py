@@ -3199,7 +3199,7 @@ class Optimizer(object):
         """
         # Should be over-ridden by each class based solver.
         raise NotImplementedError
-    next = __next__
+    next = step = __next__
 
     def _call_func(self, x):
         val = self.func(x, *self.args)
