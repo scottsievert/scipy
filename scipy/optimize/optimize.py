@@ -3066,6 +3066,21 @@ default_options = {'args': (), 'bounds': None, 'x0': None, 'jac': None,
                    'callback': None}
 
 class Optimizer(object):
+    """
+    Class based minimization of scalar functions of one or more variables::
+
+        minimize f(x) subject to
+
+        g_i(x) >= 0,  i = 1,...,m
+        h_j(x)  = 0,  j = 1,...,p
+
+    where x is a vector of one or more variables.
+    ``g_i(x)`` are the inequality constraints.
+    ``h_j(x)`` are the equality constraints.
+
+    Optionally, the lower and upper bounds for each element in x can also be
+    specified using the `bounds` argument.
+    """
     def __init__(self, func, **options):
         self.func = func
 
@@ -3092,6 +3107,14 @@ class Optimizer(object):
 
     @property
     def result(self):
+        """
+        The optimization result represented as a `OptimizeResult` object.
+        Important attributes are: `x` the solution array, `success` a Boolean
+        flag indicating if the optimizer finished successfully and `message`
+        which describes the cause of the termination. See `OptimizeResult`
+        for a description of other attributes.
+        """
+        # override to set other fields.
         if self.nit == 0:
             return None
 
@@ -3105,6 +3128,20 @@ class Optimizer(object):
         return result
 
     def __call__(self, iterations):
+        """
+        Advance the solver by a number of steps.
+
+        Parameters
+        ----------
+        iterations: int
+            The number of iterations to perform
+
+        Returns
+        -------
+        result: OptimizeResult
+            The optimization result represented as a OptimizeResult object.
+        """
+        # TODO interupt once convergence is reached?
         for it in range(iterations):
             self.x, self.fun = next(self)
 
@@ -3113,14 +3150,30 @@ class Optimizer(object):
 
     @property
     def N(self):
+        """
+        The dimensionality of the problem, `np.size(x)`.
+        """
         if self.x is not None:
             return self.x.size
         elif self.x0 is not None:
             return self.x0.size
         else:
-            return RuntimeError("Cannot determine problem size at this time.")
+            return RuntimeError("Cannot determine problem size at this time,"
+                                " perform at least one iteration")
 
     def solve(self):
+        """
+        Run the solver through to completion.
+
+        Returns
+        -------
+        result: OptimizeResult
+            The optimization result represented as a `OptimizeResult` object.
+            Important attributes are: `x` the solution array, `success` a
+            Boolean flag indicating if the optimizer exited successfully and
+            `message` which describes the cause of the termination. See
+            `OptimizeResult` for a description of other attributes.
+        """
         for x, fun in self:
             self.x, self.fun = x, fun
 
@@ -3132,16 +3185,19 @@ class Optimizer(object):
         return self.result
 
     def converged(self):
-        # Truth as to whether solver has converged
-        # abstract method to be overidden
+        """
+        The truth of whether the solver has converged.
+        """
         raise NotImplementedError
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        # should return x, fun on each iteration, increasing nit and nfun, etc
-        # abstract method to be overridden
+        """
+        Advance the solver by a single iteration.
+        """
+        # Should be over-ridden by each class based solver.
         raise NotImplementedError
     next = __next__
 
@@ -3161,6 +3217,12 @@ class Optimizer(object):
             self.callback(self.x)
 
     def _finish_up(self):
+        """
+        Each class based solver should override this to define end-of-run
+        actions. This includes setting the `message` status, `warn_flag`,
+        `success`, etc. It gets called at the end of the `solve` and `__call__`
+        methods, and during `__exit__` of the context manager.
+        """
         pass
 
     def show_options(self):
