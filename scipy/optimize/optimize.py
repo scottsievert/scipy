@@ -3090,7 +3090,19 @@ class Optimizer(object):
         self.nfev = 0
         self.maxcv = np.nan
 
-        self.result = None
+    @property
+    def result(self):
+        if self.nit == 0:
+            return None
+
+        result = OptimizeResult(
+            x=self.x,
+            fun=self.fun,
+            nfev=self.nfev,
+            nit=self.nit,
+            message=self.message,
+            success=(self.warning_flag is not True and self.converged()))
+        return result
 
     def __call__(self, iterations):
         for it in range(iterations):
@@ -3149,13 +3161,7 @@ class Optimizer(object):
             self.callback(self.x)
 
     def _finish_up(self):
-        self.result = OptimizeResult(
-            x=self.x,
-            fun=self.fun,
-            nfev=self.nfev,
-            nit=self.nit,
-            message=self.message,
-            success=(self.warning_flag is not True and self.converged()))
+        pass
 
     def show_options(self):
         # each optimizer should return their own options text.
@@ -3425,6 +3431,20 @@ class Optimize_neldermead(Optimizer):
 
         return self.x, self.fun
 
+    @property
+    def result(self):
+        result = OptimizeResult(fun=self.fun,
+                                nit=self.nit,
+                                nfev=self.nfev,
+                                status=self.warn_flag,
+                                success=(self.warn_flag == 0 and
+                                         self.converged()),
+                                message=self.message,
+                                x=self.x,
+                                final_simplex=(self.simplex,
+                                               self.f_simplex))
+        return result
+
     def _finish_up(self):
         if self.nfev >= self.maxfun:
             self.warn_flag = 1
@@ -3443,17 +3463,6 @@ class Optimize_neldermead(Optimizer):
                 print("         Current function value: %f" % self.fun)
                 print("         Iterations: %d" % self.nit)
                 print("         Function evaluations: %d" % self.nfev)
-
-        self.result = OptimizeResult(fun=self.fun,
-                                               nit=self.nit,
-                                               nfev=self.nfev,
-                                               status=self.warn_flag,
-                                               success=(self.warn_flag == 0 and
-                                                        self.converged()),
-                                               message=self.message,
-                                               x=self.x,
-                                               final_simplex=(self.simplex,
-                                                              self.f_simplex))
 
         return self.result
 
