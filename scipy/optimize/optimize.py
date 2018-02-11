@@ -3090,14 +3090,14 @@ class Optimizer(object):
         self.nfev = 0
         self.maxcv = np.nan
 
-        self._optimize_result = None
+        self.result = None
 
     def __call__(self, iterations):
         for it in range(iterations):
             self.x, self.fun = next(self)
 
         self._finish_up()
-        return self._optimize_result
+        return self.result
 
     @property
     def N(self):
@@ -3117,7 +3117,7 @@ class Optimizer(object):
                 break
 
         self._finish_up()
-        return self._optimize_result
+        return self.result
 
     def converged(self):
         # Truth as to whether solver has converged
@@ -3139,17 +3139,17 @@ class Optimizer(object):
         return val
 
     def __enter__(self):
-        pass
+        return self
 
     def __exit__(self, *args):
-        return self._finish_up()
+        self._finish_up()
 
     def _callback(self):
         if self.callback is not None:
             self.callback(self.x)
 
     def _finish_up(self):
-        self._optimize_result = OptimizeResult(
+        self.result = OptimizeResult(
             x=self.x,
             fun=self.fun,
             nfev=self.nfev,
@@ -3444,7 +3444,7 @@ class Optimize_neldermead(Optimizer):
                 print("         Iterations: %d" % self.nit)
                 print("         Function evaluations: %d" % self.nfev)
 
-        self._optimize_result = OptimizeResult(fun=self.fun,
+        self.result = OptimizeResult(fun=self.fun,
                                                nit=self.nit,
                                                nfev=self.nfev,
                                                status=self.warn_flag,
@@ -3455,7 +3455,7 @@ class Optimize_neldermead(Optimizer):
                                                final_simplex=(self.simplex,
                                                               self.f_simplex))
 
-        return self._optimize_result
+        return self.result
 
 
 def main():
