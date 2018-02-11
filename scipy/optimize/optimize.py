@@ -3070,7 +3070,7 @@ class Optimizer(object):
         self.func = func
 
         default_options.update(options)
-        for k, v in default_options:
+        for k, v in default_options.items():
             setattr(self, k, v)
 
         self.x = None
@@ -3092,12 +3092,9 @@ class Optimizer(object):
 
         self._optimize_result = None
 
-    def __call__(self):
-        for x, fun in self:
-            self.x, self.fun = x, fun
-            if (self.converged() or self.nfev >= self.maxfun or
-                    self.nit >= self.maxiter):
-                break
+    def __call__(self, iterations):
+        for it in range(iterations):
+            self.x, self.fun = next(self)
 
         self._finish_up()
         return self._optimize_result
@@ -3112,7 +3109,15 @@ class Optimizer(object):
             return RuntimeError("Cannot determine problem size at this time.")
 
     def solve(self):
-        return self.__call__()
+        for x, fun in self:
+            self.x, self.fun = x, fun
+
+            if (self.converged() or self.nfev >= self.maxfun or
+                    self.nit >= self.maxiter):
+                break
+
+        self._finish_up()
+        return self._optimize_result
 
     def converged(self):
         # Truth as to whether solver has converged
@@ -3150,7 +3155,7 @@ class Optimizer(object):
             nfev=self.nfev,
             nit=self.nit,
             message=self.message,
-            success=(self.warning_flag is not True))
+            success=(self.warning_flag is not True and self.converged()))
 
     def show_options(self):
         # each optimizer should return their own options text.
@@ -3261,10 +3266,10 @@ class Optimize_neldermead(Optimizer):
 
         options = {'disp': disp,
                    'callback': callback,
-                   'x0': asfarray(self.x0).flatten(),
+                   'x0': asfarray(x0).flatten(),
                    'args': args}
 
-        super.__init__(Optimize_neldermead, self).__init__(func, **options)
+        super(Optimize_neldermead, self).__init__(func, **options)
         _check_unknown_options(unknown_options)
 
         self.xatol = xatol
@@ -3310,7 +3315,7 @@ class Optimize_neldermead(Optimizer):
             self.simplex = numpy.zeros((N + 1, N), dtype=self.x0.dtype)
             self.simplex[0] = self.x0
             for k in range(N):
-                y = numpy.array(x0, copy=True)
+                y = numpy.array(self.x0, copy=True)
                 if y[k] != 0:
                     y[k] = (1 + nonzdelt) * y[k]
                 else:
@@ -3407,18 +3412,18 @@ class Optimize_neldermead(Optimizer):
                         sim[j] = sim[0] + sigma * (sim[j] - sim[0])
                         fsim[j] = self._call_func(sim[j])
 
-            ind = numpy.argsort(fsim)
-            self.simplex = numpy.take(sim, ind, 0)
-            self.f_simplex = numpy.take(fsim, ind, 0)
+        ind = numpy.argsort(fsim)
+        self.simplex = numpy.take(sim, ind, 0)
+        self.f_simplex = numpy.take(fsim, ind, 0)
 
-            self.x = self.simplex[0]
-            self.fun = np.min(self.f_simplex)
+        self.x = self.simplex[0]
+        self.fun = np.min(self.f_simplex)
 
-            self._callback()
+        self._callback()
 
-            self.nit += 1
+        self.nit += 1
 
-            return self.x, self.fun
+        return self.x, self.fun
 
     def _finish_up(self):
         if self.nfev >= self.maxfun:
