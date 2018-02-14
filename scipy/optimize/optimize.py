@@ -303,7 +303,7 @@ def wrap_callback_function(function):
         return allvecs, None
 
     def function_wrapper(x):
-        allvecs.append(x)
+        allvecs.append(asarray(x).copy())
         return function(x)
 
     return allvecs, function_wrapper
