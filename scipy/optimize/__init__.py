@@ -20,7 +20,7 @@ Local Optimization
    OptimizeWarning - The optimization encountered problems
    Optimizer - Base class for object oriented solvers
    Function - Class for describing a scalar function to be used by object
-    oriented solvers
+        oriented solvers
 
 The `minimize` function supports the following methods:
 
@@ -52,9 +52,9 @@ The following class based solvers are available:
 
 .. toctree::
 
-    optimize.LBFGSB
-    optimize.NelderMead
-    optimize.BFGS
+    LBFGSB - Zhu, Byrd, and Nocedal's constrained optimizer
+    NelderMead - Nelder-Mead Simplex algorithm
+    BFGS - Quasi-Newton method (Broydon-Fletcher-Goldfarb-Shanno)
 
 The specific optimization method interfaces below in this subsection are
 not recommended for use in new scripts; all of these methods are accessible

@@ -254,7 +254,7 @@ def _minimize_lbfgsb(fun, x0, args=(), jac=None, bounds=None,
     arrive at `ftol`.
 
     """
-    function = Function(fun, args=args, jac=jac)
+    function = Function(fun, args=args, grad=jac)
 
     _check_unknown_options(unknown_options)
 
@@ -431,7 +431,7 @@ class LBFGSB(Optimizer):
                 # until the completion of the current minimization iteration.
                 # Overwrite f and g:
                 self.f, self.g = self.func_and_grad(self.x,
-                                                    eps=d['epsilon'])
+                                                    epsilon=d['epsilon'])
                 self.fun = self.f
             elif task_str.startswith(b'NEW_X'):
                 # new iteration

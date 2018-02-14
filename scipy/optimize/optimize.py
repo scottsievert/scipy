@@ -38,6 +38,7 @@ from .linesearch import (line_search_wolfe1, line_search_wolfe2,
                          line_search_wolfe2 as line_search,
                          LineSearchWarning)
 from scipy._lib._util import getargspec_no_self as _getargspec
+from ._numdiff import approx_derivative
 
 
 # standard status messages of optimizers
@@ -515,7 +516,7 @@ def _minimize_neldermead(func, x0, args=(), callback=None,
         else:
             maxfev = np.inf
 
-    function = Function(func, args=args)
+    function = Function(func=func, args=args)
     opt = NelderMead(function, x0, initial_simplex=initial_simplex,
                      xatol=xatol, fatol=fatol, adaptive=adaptive,
                      **unknown_options)
@@ -833,7 +834,7 @@ def _minimize_bfgs(fun, x0, args=(), jac=None, callback=None,
     if return_all:
         allvecs = [asfarray(x0).flatten()]
 
-    function = Function(fun, args=args, jac=jac)
+    function = Function(fun, args=args, grad=jac)
     opt = BFGS(function, x0, gtol=gtol, norm=norm, epsilon=eps)
 
     allvecs, wrapped_callback = wrap_callback_function(callback)
@@ -2887,6 +2888,7 @@ class Optimizer(object):
     Optionally, the lower and upper bounds for each element in x can also be
     specified using the `bounds` argument.
     """
+    diff_method = ('2-point', '3-point', 'cs')
     opt_options = {'bounds': None, 'x0': None}
 
     """
@@ -2923,8 +2925,7 @@ class Optimizer(object):
         # wrap the constituent methods to permit counting of the number
         # of function calls
         self._nfev, self.func = wrap_function(self._func.func, ())
-        self.jac = self._grad
-        self._njev = [0]
+        self._njev, self.grad = wrap_function(self.__grad, ())
         self._nhev, self.hess = wrap_function(self._func.hess, ())
 
         # really want the options as attributes
@@ -2944,7 +2945,7 @@ class Optimizer(object):
         self.message = None
         self.warn_flag = 0
         self.options = {}
-        self._hyper = {}
+        self._hyper = {'fin_diff_method': '2-point', 'epsilon':_epsilon}
         self.nit = 0
         self.maxcv = np.nan
         self.step = self.__next__
@@ -3170,24 +3171,29 @@ class Optimizer(object):
     def __exit__(self, *args):
         self._finish_up()
 
-    def _grad(self, x, eps=1e-8):
-        """Evaluated gradient"""
+    # TODO Finite diff bounds?
+    def __grad(self, x):
+        """Evaluated gradient, but not the function as well"""
+        # don't need to increment njev, as this is done by decorator
         try:
-            g = self._func.jac(x)
-            self._njev[0] += 1
+            g = self._func.grad(x)
         except NotImplementedError:
-            g = _approx_fprime_helper(x, self.func, eps)
+            d = self.hyper_parameters
+            g = approx_derivative(self.func, x, method=d['fin_diff_method'],
+                                  rel_step=d['epsilon'])
         return g
 
-    def func_and_grad(self, x, eps=1e-8):
+    def func_and_grad(self, x, epsilon=1e-8):
         """Evaluated function and gradient"""
         f = self.func(x)
         try:
-            g = self._func.jac(x)
+            g = self._func.grad(x)
             self._njev[0] += 1
         except NotImplementedError:
-            g = _approx_fprime_helper(x, self.func, eps, f0=f)
-
+            d = self.hyper_parameters
+            self._njev[0] += 1
+            g = approx_derivative(self.func, x, method=d['fin_diff_method'],
+                                  rel_step=epsilon, f0=f)
         return f, g
 
     def _finish_up(self):
@@ -3206,17 +3212,17 @@ class Optimizer(object):
 
 class Function(object):
     """
-    Class to evaluate a function. `func`, `jac`, and `hess` callables can be
+    Class to evaluate a function. `func`, `grad`, and `hess` callables can be
     provided. Alternatively this class can be inherited and one of the
-    `func`, `jac`, or `hess` methods can be overridden.
+    `func`, `grad`, or `hess` methods can be overridden.
 
     Parameters
     ----------
     func : callable, optional
         Evaluated as `func(*((x,) + args), **kwargs)` where `args` and `kwargs`
         are extra parameters.
-    jac : callable, optional
-        The Jacobian (gradient) of the function.
+    grad : callable, optional
+        The gradient of the function.
     hess : callable, optional
         The Hessian of the function.
     args : tuple, optional
@@ -3228,19 +3234,19 @@ class Function(object):
     Notes
     -----
     If `func` is not provided then the `func` method must by overridden.
-    If `jac` (or `hess`) is not provided, or the `jac` method not overridden,
+    If `grad` (or `hess`) is not provided, or the `jac` method not overridden,
     then visiting `Optimizer`s may use numerical methods to estimate those
-    arrays. If you choose to estimate `jac` or `hess` yourself by using
+    arrays. If you choose to estimate `grad` or `hess` yourself by using
     numerical methods then be aware that the number of function evaluations
     tracked by each `Optimizer` may be underestimated.
     """
-    def __init__(self, func=None, args=(), kwargs=None, jac=None, hess=None):
+    def __init__(self, func=None, args=(), kwargs=None, grad=None, hess=None):
         self._func = func
         self.args = args
         self.kwargs = {}
         if kwargs is not None:
             self.kwargs.update(kwargs)
-        self._jac_fun = jac
+        self._grad_fun = grad
         self._hess_fun = hess
 
     def __call__(self, x):
@@ -3272,9 +3278,9 @@ class Function(object):
         """
         return self._func(*((x,) + self.args), **self.kwargs)
 
-    def jac(self, x):
+    def grad(self, x):
         """
-        Evaluate the Jacobian (gradient) at position `x`.
+        Evaluate the gradient of the function at position `x`.
 
         Parameters
         ----------
@@ -3283,11 +3289,11 @@ class Function(object):
         Returns
         -------
         grad : array-like
-            The Jacobian (gradient) of the function at position `x`.
+            The Jacobian gradient of the function at position `x`.
         """
 
-        if self._jac_fun is not None:
-            return self._jac_fun(*((x,) + self.args), **self.kwargs)
+        if self._grad_fun is not None:
+            return self._grad_fun(*((x,) + self.args), **self.kwargs)
         raise NotImplementedError
 
     def hess(self, x):
@@ -3594,7 +3600,7 @@ class BFGS(Optimizer):
 
         if self.nit == 0:
             # Sets the initial step guess to dx ~ 1
-            self.old_fun, self.gfk = self.func_and_grad(self.x, eps=epsilon)
+            self.old_fun, self.gfk = self.func_and_grad(self.x, epsilon=epsilon)
             self.old_old_fun = self.old_fun + np.linalg.norm(self.gfk) / 2.
             self.gnorm = vecnorm(self.gfk, ord=d['norm'])
 
@@ -3602,7 +3608,7 @@ class BFGS(Optimizer):
         try:
             # I think fc and gc are numbers of function counts.
             alpha_k, fc, gc, self.old_fun, self.old_old_fun, gfkp1 = \
-                _line_search_wolfe12(self.func, self.jac, self.x,
+                _line_search_wolfe12(self.func, self.grad, self.x,
                                      self.pk, self.gfk, self.old_fun,
                                      self.old_old_fun, amin=1e-100, amax=1e100)
         except _LineSearchError:
@@ -3617,7 +3623,7 @@ class BFGS(Optimizer):
         self.fun = self.old_fun
 
         if gfkp1 is None:
-            gfkp1 = self.jac(self.x)
+            gfkp1 = self.grad(self.x)
 
         self.yk = gfkp1 - self.gfk
         self.gfk = gfkp1
