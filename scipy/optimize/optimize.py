@@ -3011,7 +3011,7 @@ class Optimizer(object):
         self._hyper = {}
         self.nit = 0
         self.maxcv = np.nan
-        self.next = self.step = self.__next__
+        self.step = self.__next__
 
     @property
     def nfev(self):
@@ -3211,6 +3211,13 @@ class Optimizer(object):
         """
         # Should be over-ridden by each class based solver.
         raise NotImplementedError
+
+    def next(self):
+        """
+        Advance the solver by a single iteration.
+        """
+        # next() is required for compatibility with Python2.7.
+        return self.__next__()
 
     def __enter__(self):
         return self
