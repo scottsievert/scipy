@@ -841,8 +841,7 @@ def _minimize_bfgs(fun, x0, args=(), jac=None, callback=None,
     if maxiter is None:
         maxiter = opt.N * 200
 
-    result = opt.solve(maxiter=maxiter, callback=wrapped_callback,
-                       disp=disp)
+    result = opt.solve(maxiter=maxiter, callback=wrapped_callback)
 
     if return_all:
         result['allvecs'] = allvecs

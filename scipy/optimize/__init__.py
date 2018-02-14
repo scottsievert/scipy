@@ -18,6 +18,9 @@ Local Optimization
    minimize_scalar - Unified interface for minimizers of univariate functions
    OptimizeResult - The optimization result returned by some optimizers
    OptimizeWarning - The optimization encountered problems
+   Optimizer - Base class for object oriented solvers
+   Function - Class for describing a scalar function to be used by object
+    oriented solvers
 
 The `minimize` function supports the following methods:
 
@@ -44,6 +47,14 @@ The `minimize_scalar` function supports the following methods:
    optimize.minimize_scalar-brent
    optimize.minimize_scalar-bounded
    optimize.minimize_scalar-golden
+
+The following class based solvers are available:
+
+.. toctree::
+
+    optimize.LBFGSB
+    optimize.NelderMead
+    optimize.BFGS
 
 The specific optimization method interfaces below in this subsection are
 not recommended for use in new scripts; all of these methods are accessible
