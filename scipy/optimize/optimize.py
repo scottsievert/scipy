@@ -2872,6 +2872,21 @@ def show_options(solver=None, method=None, disp=True):
         return text
 
 
+def minimize(func, args=(), method=None, grad=None, hess=None, **kwargs):
+    solve_kwargs = {key: kwargs.pop(key) for key in ['maxiter', 'maxfun',
+                                                     'callback', 'disp']
+                    if key in kwargs}
+    fn = Function(func, args=args, grad=grad, hess=hess)
+
+    opts = [opt for opt in sys.modules[__name__]]
+    viable_opts = [opt for opt in opts
+                   if opt.__name__.lower() == method.lower().replace('-', '')]
+    if len(viable_opts) > 1:
+        raise ValueError('Multiple optimizers with that name found for that method')
+    opt = viable_opts[0](fn, **kwargs)
+    return opt.solve(**solve_kwargs)
+
+
 class Optimizer(object):
     """
     Class based minimization of scalar functions of one or more variables::
@@ -2910,7 +2925,7 @@ class Optimizer(object):
         because if maxiter is set to 0 then the function will have never been
         evaluated and self.fun will be None. Some optimizers don't provide x0,
         only doing that after first iteration. In this case self.x will be None
-        before the first iteration is done. 
+        before the first iteration is done.
     5. Solver hyper_parameters should be exposed in the `_hyper` dictionary,
         which should be set in the inheriting Optimizer. This `_hyper`
         dictionary is visible from the `hyper_parameters` property.
@@ -3071,7 +3086,7 @@ class Optimizer(object):
             if callback is not None:
                 callback(self.x)
 
-        return self.result
+        return self.solve()
 
     @property
     def N(self):
