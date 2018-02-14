@@ -2937,6 +2937,22 @@ def show_options(solver=None, method=None, disp=True):
         return text
 
 
+def minimize(func, x0, *args_, args=(), method=None, jac=None, hess=None, **kwargs):
+    solve_kwargs = {key: kwargs.pop(key) for key in ['maxiter', 'callback',
+                                                     'disp', 'maxfun']
+                    if key in kwargs}
+    fn = Function(func, args=args, grad=jac, hess=hess)
+    fn.x = x0
+    opts = [opt for opt in sys.modules[__name__]]
+    viable_opts = [opt for opt in opts
+                   if opt.__name__.lower() == method.lower().replace('-', '')]
+    if len(viable_opts) > 1:
+        raise ValueError('More than 1 viable optimizer was found for '
+                         'method=' + str(method))
+    opt = viable_opts[0](fn, *args_, **kwargs)
+    return opt.solve(**solve_kwargs)
+
+
 class Optimizer(object):
     """
     Class based minimization of scalar functions of one or more variables::
