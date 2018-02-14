@@ -2926,7 +2926,7 @@ class Optimizer(object):
         # of function calls
         self._nfev, self.func = wrap_function(self._func.func, ())
         self._njev, self.grad = wrap_function(self.__grad, ())
-        self._nhev, self.hess = wrap_function(self._func.hess, ())
+        self._nhev, self.hess = wrap_function(self.__hess, ())
 
         # really want the options as attributes
         for k, v in self.opt_options.items():
@@ -3182,6 +3182,18 @@ class Optimizer(object):
             g = approx_derivative(self.func, x, method=d['fin_diff_method'],
                                   rel_step=d['epsilon'])
         return g
+
+    def __hess(self, x):
+        """Numerically estimated Hessian"""
+        # don't need to increment nhev, as this is done by decorator
+        try:
+            h = self._func.hess(x)
+        except NotImplementedError:
+            d = self.hyper_parameters
+            g = self.grad(x)
+            h = approx_derivative(self.grad, x, method=d['fin_diff_method'],
+                                  rel_step=d['epsilon'], f0=g)
+        return h
 
     def func_and_grad(self, x, epsilon=1e-8):
         """Evaluated function and gradient"""
