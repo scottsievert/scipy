@@ -1,18 +1,28 @@
-Outline:
+Scipy PEP - Introduction of Optimizer classes
+=============================================
 
 * Abstract
 * Introduction
     * Here's what minimization does...
     * Point to users
 * Problem
-    * No standard interface for optimizers or functions
-    * scipy.optimize.minimize is a black box
+    * No standard interface for optimizers or functions.
+      - Have to explain why minimize isn't a standard interface.
+    * scipy.optimize.minimize is a black box (have to explain why)
+    * would like to get access to solver hyper parameters, e.g, change convergence tolerances as we're going, or change mutation constant during differential evolution.
+    * would like ability to proceed stepwise through iteration, why can't we just use the callback to do that?
+    * would like to access solver state
+    * addition of new features to minimizers leads to lengthy functions. There is a lot of duplicate code doing initialisation (e.g. processing of bounds), running, and cleanup. Class based optimizers inherit methods, leading to less duplication. Methods of base class can be improved and all inheriting classes benefit.
     * Mixing of function arguments with optimization arguments (and many arguments)
+    * examine scipy issues database to see what issues would be cleaned up.
+    * introduction of context manager enables easy setup of cleanup actions, and would make it easier have wholesale introduction of things like multiprocessing.
+    * no kwargs for func, only args
 * Solution
     * Classes (briefly list attributes, functions)
 * Solution enhancements
     * Provide standard interface
-        * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch.
+        * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. Would those projects be prepared to state that?
+        * it would provide a standard way to operate the object, but all the classes would still have different names
     * Clean up minimize API (it's complicated rn)
     * Provide class features
         * expert interaction
@@ -21,8 +31,63 @@ Outline:
 * Solution implementation
     * List functions, attributes in depth
     * Existing code
+    ```
+    def func(x, *args):
+        return x**2 + args[0]
+        
+    def grad(x, *args):
+      return 2 * x
+    
+    def callback(x):
+      print(x)
+    
+    # existing call has lots of parameters, mixing optimizer args with func args
+    result = minimize(func, x0, args=(2,), jac=jac, method='BFGS', maxiter=10, callback=callback)
+    
+    # proposed
+    function = Function(func=func, args=(2,), kwargs=kwargs, jac=jac)
+    opt = BFGS(function, x0)
+    result = opt.solve(maxiter=10, callback=callback)
+ 
+    # could also have
+    # result = BFGS(function, x0).solve(maxiter=10, callback=callback)
+    
+    # alternatively control how iteration occurs
+    d = opt.hyper_parameters
+    for i, v in enumerate(opt):
+      x, f = v
+      print(i, f, x)
+      d['my_hyper_parameter'] = np.inf
+ 
+    # use function classes encapsulates the whole function and offers the potential for more sophisticated calculation.
+    class Quad(Function):
+       def __init__(self, bkg):
+           super(Quad, self).__init__(self)
+           self.bkg = bkg
+       
+       def func(self, x):
+          return x**2 + args[0]
+
+       def grad(self, x):
+          return 2 * x
+
+       def hess(self, x):
+          return 2
+         
+     opt = BFGS(function, x0).solve(maxiter=10)
+     
+     # context managers offer the chance for cleanup actions, for example multiprocessing.
+     with DifferentialEvolutionSolver(function, bounds, workers=2) as opt:
+         # the __entry__ and __exit__ in the solver can create and close
+         # multiprocessing pools.
+         res = opt.solve()
+   ```
     * Speed
+      * will be benchmarked to check that performance is not damaged. Class based system is easy to convert to cython.
     * Backwards compatibility
+      * it'll never fly without back compat.
+      * existing minimize functionality will be kept, but backed by the solver objects. Should be able to remove `_minimize_lbfgsb`, etc.
+      * new solver objects can be used by themselves.
 * Existing work
     * PyTorch
     * scikit-optimize (they refer to scipy.optimize.minimize)
