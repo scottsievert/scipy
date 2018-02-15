@@ -4,30 +4,47 @@ Scipy PEP - Introduction of Optimizer classes
 * Abstract
 * Introduction
     * Here's what minimization does...
-    * Point to users
+    * Point to users of...
+        * Minimization in general
+            * Own defs: PyTorch
+            * Functional class wrapper around minimize: statsmodels, astropy, scikits.fitting
+            * Functional defs: sklearn, daskml
+            * Functional definition: skopt
+        * scipy.optimize.minimize (many users, do a github search)
 * Problem
     * No standard interface for optimizers or functions.
-      - Have to explain why minimize isn't a standard interface.
+        * Have to explain why minimize isn't a standard interface.
     * scipy.optimize.minimize is a black box (have to explain why)
-    * would like to get access to solver hyper parameters, e.g, change convergence tolerances as we're going, or change mutation constant during differential evolution.
-    * would like ability to proceed stepwise through iteration, why can't we just use the callback to do that?
+        * hides all details. Some are literal black boxes and implemented in Fortrain/C.
+    * would like to get access to solver hyper parameters
+        * e.g, change convergence tolerances as we're going
+        * e.g., change mutation constant during differential evolution.
+    * would like ability to proceed stepwise through iteration
+        * Why can't we just use the callback to do that?
+        * What if running some web server, and don't have time to wait for minimization to finish?
     * would like to access solver state
-    * addition of new features to minimizers leads to lengthy functions. There is a lot of duplicate code doing initialisation (e.g. processing of bounds), running, and cleanup. Class based optimizers inherit methods, leading to less duplication. Methods of base class can be improved and all inheriting classes benefit.
-    * Mixing of function arguments with optimization arguments (and many arguments)
+        * e.g., current value of f(x)
+        * e.g., for coding gradients
+    * addition of new features to minimizers leads to lengthy functions and lots of duplicate code.
+        * Classes => inherietance. Base class improves => all improve.
+        * Unix philisophy, small sharp tools for one job and one job only. Not many dull tools for the same job.
+    * Mixing of function arguments with optimization arguments (plus, there are too many arguments)
     * examine scipy issues database to see what issues would be cleaned up.
-    * introduction of context manager enables easy setup of cleanup actions, and would make it easier have wholesale introduction of things like multiprocessing.
+        * #5832, grad.T should be returned.
     * no kwargs for func, only args
 * Solution
     * Classes (briefly list attributes, functions)
 * Solution enhancements
     * Provide standard interface
-        * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. Would those projects be prepared to state that?
+        * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
         * it would provide a standard way to operate the object, but all the classes would still have different names
     * Clean up minimize API (it's complicated rn)
     * Provide class features
         * expert interaction
         * expose alg hyperparameters (grid search, etc)
         * keyboard interrupts
+   * introduction of context manager enables easy setup of cleanup actions
+       * would make it easier have wholesale introduction of things like multiprocessing.
 * Solution implementation
     * List functions, attributes in depth
     * Existing code
@@ -85,8 +102,8 @@ Scipy PEP - Introduction of Optimizer classes
     * Speed
       * will be benchmarked to check that performance is not damaged. Class based system is easy to convert to cython.
     * Backwards compatibility
-      * it'll never fly without back compat.
-      * existing minimize functionality will be kept, but backed by the solver objects. Should be able to remove `_minimize_lbfgsb`, etc.
+      * backwards compatibility is a focus
+      * the functionality will remain but rely on the solver objects. Should be able to remove `_minimize_lbfgsb`, etc.
       * new solver objects can be used by themselves.
 * Existing work
     * PyTorch
